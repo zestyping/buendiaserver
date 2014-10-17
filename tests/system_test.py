@@ -92,6 +92,10 @@ class SystemTest(unittest.TestCase):
         self.assertEqual(0, len(self.get_json('/patients?given_name=Bob')))
         self.assertEqual(1, len(self.get_json('/patients?given_name=Tom')))
 
+        # Test matching on fields is case-insensitive.
+        self.assertEqual(1, len(self.get_json('/patients?status=SUSPECTED')))
+        self.assertEqual(1, len(self.get_json('/patients?given_name=tom')))
+
         # Test matching on multiple fields.
         self.assertEqual(0, len(self.get_json(
             '/patients?given_name=Tom&status=foo')))
@@ -105,6 +109,10 @@ class SystemTest(unittest.TestCase):
         self.assertEqual(1, len(self.get_json('/patients?search=Tom')))
         self.assertEqual(1, len(self.get_json('/patients?search=om')))
         self.assertEqual(1, len(self.get_json('/patients?search=To')))
+
+        # Test searching is case-insensitive.
+        self.assertEqual(1, len(self.get_json('/patients?search=tom')))
+
 
     def test_add_new_patient(self):
         # TODO(ping): The POST API should take JSON, not form-encoded data.
