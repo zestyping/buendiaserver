@@ -98,10 +98,15 @@ class SystemTest(unittest.TestCase):
         self.assertEqual(1, len(self.get_json('/patients?given_name=tom')))
 
         # Test matching on multiple fields.
+        http_post('/patients', 'id=test.1&given_name=Frank&status=discharged')
         self.assertEqual(0, len(self.get_json(
             '/patients?given_name=Tom&status=foo')))
         self.assertEqual(0, len(self.get_json(
             '/patients?given_name=Bob&status=suspected')))
+        self.assertEqual(0, len(self.get_json(
+            '/patients?given_name=Frank&status=suspected')))
+        self.assertEqual(1, len(self.get_json(
+            '/patients?given_name=Frank&status=discharged')))
         self.assertEqual(1, len(self.get_json(
             '/patients?given_name=Tom&status=suspected')))
 
