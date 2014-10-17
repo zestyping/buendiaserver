@@ -84,6 +84,10 @@ class SystemTest(unittest.TestCase):
 
     def test_add_new_patient(self):
 <<<<<<< HEAD
+<<<<<<< HEAD
+=======
+        # TODO(ping): The POST API should take JSON, not form-encoded data.
+>>>>>>> zestyping-prepared-statements
 =======
         # TODO(ping): The POST API should take JSON, not form-encoded data.
 >>>>>>> zestyping-prepared-statements

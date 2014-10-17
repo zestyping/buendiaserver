@@ -1,90 +1,116 @@
 package org.projectbuendia.web.api.patients.get;
 
 import org.projectbuendia.server.Server;
-import org.projectbuendia.sqlite.SQLiteQuery;
+import org.projectbuendia.sqlite.SQLiteStatement;
 import org.projectbuendia.web.api.ApiInterface;
 import org.projectbuendia.web.api.SharedFunctions;
 
+import com.google.common.base.Joiner;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import java.io.IOException;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.HashSet;
 
 /**
  * Created by wwadewitte on 10/11/14.
  */
 public class FilterPatients implements ApiInterface {
+    // All the string fields in the patients table.
+    static final HashSet FILTERABLE_COLUMNS = new HashSet(Arrays.asList(
+        "id",
+        "rfid_ids",
+        "bluetooth_id",
+        "status",
+        "given_name",
+        "family_name",
+        "age_certainty",
+        "gender",
+        "movement",
+        "eating",
+        "origin_location",
+        "next_of_kin"
+    ));
+
     @Override
-    public void call(final HttpServletRequest request, final HttpServletResponse response,final HashMap<String, String> urlVariables, final Map<String, String[]> parameterMap, final HashMap<String, String> payLoad){
+    public void call(final HttpServletRequest request,
+                     final HttpServletResponse response,
+                     final HashMap<String, String> urlVariables,
+                     final Map<String, String[]> parameterMap,
+                     final HashMap<String, String> payLoad) {
 
+        List<String> conditions = new ArrayList();
+        String op = null;
+        List<String> args = new ArrayList();
 
-        final String[] responseText = new String[]{null};
-
-        StringBuilder whereString = new StringBuilder();
-
-        if(parameterMap.containsKey("search")) {
-            whereString.append( " WHERE `id` LIKE '%"+parameterMap.get("search")[0]+"%'");
-            whereString.append( " OR `given_name` LIKE '%"+parameterMap.get("search")[0]+"%'");
-            whereString.append( " OR `family_name` LIKE '%"+parameterMap.get("search")[0]+"%'");
-           /* whereString.append( " OR `important_information` LIKE '%"+parameterMap.get("search")[0]+"%'");
-            whereString.append( " OR `status` LIKE '%"+parameterMap.get("search")[0]+"%'");
-            whereString.append( " OR `origin` LIKE '%"+parameterMap.get("search")[0]+"%'");
-            whereString.append( " OR `assigned_location_zone_id` LIKE '%"+parameterMap.get("search")[0]+"%'");
-            whereString.append( " OR `assigned_location_tent_id` LIKE '%"+parameterMap.get("search")[0]+"%'");
-            whereString.append( " OR `assigned_location_bed` LIKE '%"+parameterMap.get("search")[0]+"%'");*/
+        // Gather all the filter conditions.
+        // TODO(ping): Change the parameterMap to a Map<String, String>
+        // instead of Map<String, String[]> so we don't have to [0] all over.
+        final String[] searchParams = parameterMap.get("search");
+        if (searchParams != null) {
+            conditions.add("id like '%' || ? || '%'");
+            args.add(searchParams[0]);
+            conditions.add("given_name like '%' || ? || '%'");
+            args.add(searchParams[0]);
+            conditions.add("family_name like '%' || ? || '%'");
+            args.add(searchParams[0]);
+            op = "or";
         } else {
             for (String s : parameterMap.keySet()) {
-                if (s.contains("limit") || s.contains("offset") || s.contains("order")) {
-                    continue;
-                }
-                if(whereString.length() <= 0) {
-                    whereString.append(" WHERE `" + s + "` LIKE '%" + parameterMap.get(s)[0] + "%'");
-                } else {
-                    whereString.append(" AND `" + s + "` LIKE '%" + parameterMap.get(s)[0] + "%'");
+                // Only accept valid column names.
+                if (FILTERABLE_COLUMNS.contains(s)) {
+                    conditions.add(s + " = ?");
+                    args.add(parameterMap.get(s)[0]);
                 }
             }
+            op = "and";
         }
-        String queryString = "" +
-                "SELECT * FROM `patients`" +
-                (!parameterMap.isEmpty() ?
-                        whereString.toString()
-                        : ""
-                )
-                +
-                (parameterMap.containsKey("limit") && parameterMap.containsKey("offset")  ?
-                        " LIMIT " +parameterMap.get("offset")[0] + "," +parameterMap.get("limit")[0]
-                        :
-                        parameterMap.containsKey("limit") ? " LIMIT " + parameterMap.get("limit")[0]
-                                :
-                                /*parameterMap.containsKey("offset") ? " OFFSET " + parameterMap.get("offset")[0]
-                                        : todo(pim) figure out why this doesnt work, for now offset only works in combination with limit */"");
 
-        ;
+        // Construct the SQL query.
+        String query = "select * from patients";
+        if (!conditions.isEmpty()) {
+            query += " where " + Joiner.on(" " + op + " ").join(conditions);
+        }
+        String[] limitParams = parameterMap.get("limit");
+        if (limitParams != null) {
+            query += " limit ?";
+            args.add(limitParams[0]);
+        }
+        String[] offsetParams = parameterMap.get("offset");
+        if (offsetParams != null) {
+            query += " offset ?";
+            args.add(offsetParams[0]);
+        }
+        System.out.println("query: " + query);
+        System.out.println("with args: " + Joiner.on(", ").join(args));
 
-        System.out.println(queryString);
-        SQLiteQuery checkQuery = new SQLiteQuery(queryString) {
-
+        // Execute the query and collect all the results into a list.
+        final List<String> jsonResults = new ArrayList();
+        final boolean[] finished = {false};
+        Server.getLocalDatabase().executeStatement(
+            new SQLiteStatement(query, args.toArray()) {
             @Override
             public void execute(ResultSet result) throws SQLException {
-                StringBuilder s = new StringBuilder();
                 while (result.next()) {
-                    if(result.isFirst()) {
-                        s.append(SharedFunctions.SpecificPatientResponse(result));
-                    } else {
-                        s.append("," + SharedFunctions.SpecificPatientResponse(result));
-                    }
+                    jsonResults.add(
+                        SharedFunctions.SpecificPatientResponse(result));
                 }
-                responseText[0] = s.toString();
+                finished[0] = true;
             }
-        };
+        });
 
-        Server.getLocalDatabase().executeQuery(checkQuery);
-
-        while(responseText[0] == null) {
-            // wait until the response is given
+        // Wait until the query is done.
+        // TODO(ping): If an exception occurs while processing the query,
+        // execute() is never called and the server hangs forever.  We should
+        // issue the query directly to SQLite instead of sending it to the
+        // connection processor and spin-waiting here.
+        while (!finished[0]) {
             try {
                 Thread.sleep(1);
             } catch (InterruptedException e) {
@@ -92,12 +118,13 @@ public class FilterPatients implements ApiInterface {
             }
         }
 
+        // Write out all the results as a JSON array.
         response.setStatus(HttpServletResponse.SC_OK);
         try {
-            response.getWriter().write("[" + responseText[0] + "]");
+            response.getWriter().write(
+                "[" + Joiner.on(", ").join(jsonResults) + "]");
         } catch (IOException e) {
             e.printStackTrace();
         }
-
     }
 }
