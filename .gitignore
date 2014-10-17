@@ -3,4 +3,6 @@
 .DS_Store
 errors
 msf.db
-out
+out/*
+*.iml
+.idea/*
