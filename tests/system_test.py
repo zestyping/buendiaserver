@@ -53,7 +53,7 @@ class SystemTest(unittest.TestCase):
         self.assertEqual(200, status_code)
 
     def test_json_serialization(self):
-        http_post('/patients', 'id=test.1&given_name={"}&status=suspected')
+        http_post('/patients', 'given_name={"}&status=suspected')
 
         # Verify that special characters in data don't cause JSON syntax errors.
         patients = self.get_json('/patients')
@@ -64,7 +64,7 @@ class SystemTest(unittest.TestCase):
         """Test support for unicode in the Patient API."""
         # Add one patient; confirm it appears in the list of all patients.
         unicode_name = quote(u"T\u00F8m".encode("utf8"))
-        http_post('/patients', "id=test.1&given_name=%s&status=suspected" % (
+        http_post('/patients', "given_name=%s&status=suspected" % (
             unicode_name,))
         patients = self.get_json('/patients')
         self.assertEqual(1, len(patients))
@@ -84,7 +84,7 @@ class SystemTest(unittest.TestCase):
         self.assertEqual([], self.get_json('/patients'))
 
         # Add one patient; confirm it appears in the list of all patients.
-        http_post('/patients', 'id=test.1&given_name=Tom&status=suspected')
+        http_post('/patients', 'given_name=Tom&status=suspected')
         self.assertEqual(1, len(self.get_json('/patients')))
 
         # Test matching on single fields.
@@ -98,7 +98,7 @@ class SystemTest(unittest.TestCase):
         self.assertEqual(1, len(self.get_json('/patients?given_name=tom')))
 
         # Test matching on multiple fields.
-        http_post('/patients', 'id=test.1&given_name=Frank&status=discharged')
+        http_post('/patients', 'given_name=Frank&status=discharged')
         self.assertEqual(0, len(self.get_json(
             '/patients?given_name=Tom&status=foo')))
         self.assertEqual(0, len(self.get_json(
@@ -123,7 +123,7 @@ class SystemTest(unittest.TestCase):
         """Testing all incoming variables are properly escaped."""
         quote_name = quote('T\'om')
         # Add one patient that contains quotes.
-        http_post('/patients', 'id=test.1&given_name=%s&status=suspected' % (
+        http_post('/patients', 'given_name=%s&status=suspected' % (
             quote_name,))
         # Test the patient is stored and can be retrieved.
         patients = self.get_json('/patients')
@@ -143,7 +143,7 @@ class SystemTest(unittest.TestCase):
     def test_add_new_patient(self):
         # TODO(ping): The POST API should take JSON, not form-encoded data.
         # self.post_json('/patients', {'id': 'test.1', 'given_name': 'Tom'})
-        http_post('/patients', 'id=test.1&given_name=Tom&status=suspected')
+        http_post('/patients', 'given_name=Tom&status=suspected')
 
         # Verify that the new patient appears in the list of all patients.
         patients = self.get_json('/patients')
