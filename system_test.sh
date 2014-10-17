@@ -19,13 +19,13 @@ $ROOT/build.sh $OUTDIR || exit 1
 cd $OUTDIR
 
 # Start the server.
-echo "Starting server..."
+echo -n "Starting server..."
 java -cp .:$CLASSPATH $MAINCLASS >server.log 2>&1 &
 pid=$!
 
 # Wait for the server to be ready.
 for attempt in 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20; do
-  sleep 0.5
+  sleep 0.2
   if curl -s http://localhost:8080/ >/dev/null; then up=yes; break; fi
   echo -n "."
 done
@@ -38,21 +38,21 @@ fi
 
 # Run the tests.
 echo
-echo "Running tests..."
+echo -n "Running tests: "
 python $ROOT/tests/system_test.py && passed=yes
 
 # Shut down the server.
 echo -n "Stopping server..."
-for attempt in 1 2 3 4 5 6 7 8 9 10; do
+for attempt in 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20; do
   kill $pid
-  sleep 0.5
+  sleep 0.2
   if ! ps -p $pid >/dev/null; then stopped=yes; break; fi
 done
 if [ -n "$stopped" ]; then
-  echo "...stopped."
+  echo "stopped."
 else
   kill -9 $pid
-  echo "...killed."
+  echo "killed."
 fi
 
 # Report the results.
