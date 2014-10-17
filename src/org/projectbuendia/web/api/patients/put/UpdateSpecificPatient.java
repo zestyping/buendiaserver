@@ -6,45 +6,72 @@ import org.projectbuendia.sqlite.SQLiteUpdate;
 import org.projectbuendia.web.api.ApiInterface;
 import org.projectbuendia.web.api.SharedFunctions;
 
+import com.google.common.base.Joiner;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import java.io.IOException;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.HashSet;
 
 /**
  * Created by wwadewitte on 10/11/14.
  */
 public class UpdateSpecificPatient implements ApiInterface {
+    // All the fields in the patients table that can be set during an UPDATE.
+    static final HashSet UPDATABLE_COLUMNS = new HashSet(Arrays.asList(
+        "status",
+        "given_name",
+        "family_name",
+        "assigned_location_zone_id",
+        "assigned_location_tent_id",
+        "assigned_location_bed",
+        "age_years",
+        "age_months",
+        "age_certainty",
+        "age_type",
+        "gender",
+        "important_information",
+        "pregnancy_start_timestamp",
+        "first_showed_symptoms_timestamp",
+        "movement",
+        "eating",
+        "origin_location",
+        "next_of_kin"
+    ));
+
     @Override
-    public void call(final HttpServletRequest request, final HttpServletResponse response,final HashMap<String, String> urlVariables, final Map<String, String[]> parameterMap, final HashMap<String, String> payLoad){
+    public void call(final HttpServletRequest request,
+                     final HttpServletResponse response,
+                     final HashMap<String, String> urlVariables,
+                     final Map<String, String[]> parameterMap,
+                     final HashMap<String, String> payLoad) {
 
         final String[] responseText = new String[]{null};
 
-        Server.getLocalDatabase().executeUpdate(new SQLiteUpdate("" +
-                "update `patients` set " +
-                (payLoad.get("status") != null ? "`status`='" + payLoad.get("status") + "'" : "") +
-                (payLoad.get("given_name") != null ? ",`given_name`='" + payLoad.get("given_name") + "'" : "") +
-                (payLoad.get("family_name") != null ? ",`family_name`='" + payLoad.get("family_name") + "'" : "") +
-                (payLoad.get("assigned_location_zone_id") != null ? ",`assigned_location_zone_id`='" + payLoad.get("assigned_location_zone_id") + "'" : "") +
-                (payLoad.get("assigned_location_tent_id") != null ? ",`assigned_location_tent_id`='" + payLoad.get("assigned_location_tent_id") + "'" : "") +
-                (payLoad.get("assigned_location_bed") != null ? ",`assigned_location_bed`='" + payLoad.get("assigned_location_bed") + "'" : "") +
-                (payLoad.get("age_years") != null ? ",`age_years`='" + payLoad.get("age_years") + "'" : "") +
-                (payLoad.get("age_months") != null ? ",`age_months`='" + payLoad.get("age_months") + "'" : "") +
-                (payLoad.get("age_certainty") != null ? ",`age_certainty`='" + payLoad.get("age_certainty") + "'" : "") +
-                (payLoad.get("age_type") != null ? ",`age_type`='" + payLoad.get("age_type") + "'" : "") +
-                (payLoad.get("gender") != null ? ",`gender`='" + payLoad.get("gender") + "'" : "") +
-                (payLoad.get("important_information") != null ? ",`important_information`='" + payLoad.get("important_information") + "'" : "") +
-                (payLoad.get("pregnancy_start_timestamp") != null ? ",`pregnancy_start_timestamp`='" + payLoad.get("pregnancy_start_timestamp") + "'" : "") +
-                (payLoad.get("first_showed_symptoms_timestamp") != null ? ",`first_showed_symptoms_timestamp`='" + payLoad.get("first_showed_symptoms_timestamp") + "'" : "") +
-                (payLoad.get("movement") != null ? ",`movement`='" + payLoad.get("movement") + "'" : "") +
-                (payLoad.get("eating") != null ? ",`eating`='" + payLoad.get("eating") + "'" : "") +
-                (payLoad.get("origin_location") != null ? ",`origin_location`='" + payLoad.get("origin_location") + "'" : "") +
-                (payLoad.get("next_of_kin") != null ? ",`next_of_kin`='" + payLoad.get("next_of_kin") + "'" : "") +
-                " where `id` = '" + urlVariables.get("id") + "'"
-        ));
+        List<String> updates = new ArrayList();
+        List<String> args = new ArrayList();
+
+        for(String s : payLoad.keySet()) {
+            if (UPDATABLE_COLUMNS.contains(s)) {
+                updates.add("`"+s+"` = ?");
+                args.add(payLoad.get(s));
+            }
+        }
+
+        String updateQuery = "update `patients` set ";
+        updateQuery += Joiner.on(", ").join(updates);
+        updateQuery += " where `id` = ?";
+
+		args.add(urlVariables.get("id"));
+
+        Server.getLocalDatabase().executeUpdate(
+            new SQLiteUpdate(updateQuery, args.toArray()));
 
         SQLiteQuery checkQuery = new SQLiteQuery("SELECT * FROM `patients` WHERE `id` = '"+urlVariables.get("id")+"'  ") {
 
