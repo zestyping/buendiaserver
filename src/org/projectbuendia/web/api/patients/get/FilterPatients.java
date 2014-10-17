@@ -1,16 +1,19 @@
 package org.projectbuendia.web.api.patients.get;
 
+import org.projectbuendia.models.Patient;
 import org.projectbuendia.server.Server;
 import org.projectbuendia.sqlite.SQLiteQuery;
 import org.projectbuendia.web.api.ApiInterface;
-import org.projectbuendia.web.api.SharedFunctions;
 
+import com.google.gson.Gson;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import java.io.IOException;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 /**
@@ -70,14 +73,11 @@ public class FilterPatients implements ApiInterface {
             @Override
             public void execute(ResultSet result) throws SQLException {
                 StringBuilder s = new StringBuilder();
+                List patients = new ArrayList();
                 while (result.next()) {
-                    if(result.isFirst()) {
-                        s.append(SharedFunctions.SpecificPatientResponse(result));
-                    } else {
-                        s.append("," + SharedFunctions.SpecificPatientResponse(result));
-                    }
+                    patients.add(Patient.fromResultSet(result));
                 }
-                responseText[0] = s.toString();
+                responseText[0] = (new Gson()).toJson(patients);
             }
         };
 
@@ -94,7 +94,7 @@ public class FilterPatients implements ApiInterface {
 
         response.setStatus(HttpServletResponse.SC_OK);
         try {
-            response.getWriter().write("[" + responseText[0] + "]");
+            response.getWriter().write(responseText[0]);
         } catch (IOException e) {
             e.printStackTrace();
         }

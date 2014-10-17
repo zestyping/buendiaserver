@@ -26,6 +26,7 @@ def reset_db():
     tables = c.execute('select tbl_name from sqlite_master where type="table"')
     for table in tables:
         c.execute('delete from %s' % table)
+    c.commit()
     c.close()
 
 
@@ -45,20 +46,25 @@ class SystemTest(unittest.TestCase):
             path, json.dumps(data), {'Content-Type': 'application/json'})
         self.assertEqual(200, status_code)
 
+    def test_json_serialization(self):
+        http_post('/patients', 'id=test.1&given_name={"}&status=suspected')
+
+        # Verify that special characters in data don't cause JSON syntax errors.
+        patients = self.get_json('/patients')
+        self.assertEqual(1, len(patients))
+        self.assertEqual('{"}', patients[0]['given_name'])
+
     def test_list_patients(self):
         self.assertEqual([], self.get_json('/patients'))
 
     def test_add_new_patient(self):
-        self.post_json('/patients', {'id': 'test.1', 'given_name': 'Tom'})
+        # self.post_json('/patients', {'id': 'test.1', 'given_name': 'Tom'})
+        http_post('/patients', 'id=test.1&given_name=Tom&status=suspected')
 
         # Verify that the new patient appears in the list of all patients.
         patients = self.get_json('/patients')
         self.assertEqual(1, len(patients))
         self.assertEqual('Tom', patients[0]['given_name'])
-
-        # Verify that the new patient can be retrieved by ID.
-        patient = self.get_json('/patients/test.1')
-        self.assertEqual('Tom', patient['given_name'])
 
 
 if __name__ == '__main__':
