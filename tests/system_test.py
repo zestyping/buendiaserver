@@ -128,12 +128,12 @@ class SystemTest(unittest.TestCase):
         self.assertEqual('T\'om', patients[0]['given_name'])
 
         # Test search is properly escaping the incoming variables
-        self.assertEqual(1, len(self.get_json(
-            quote('/patients?search=%s' % (quote_name, )))))
+        self.assertEqual(1, len(self.get_json('/patients?search=%s' % (
+            quote_name, ))))
 
         # Test field match is properly escaping the incoming variables.
-        self.assertEqual(1, len(self.get_json(
-            quote('/patients?given_name=%s' % (quote_name, )))))
+        self.assertEqual(1, len(self.get_json('/patients?given_name=%s' % (
+            quote_name, ))))
 
     def test_add_new_patient(self):
         # TODO(ping): The POST API should take JSON, not form-encoded data.
