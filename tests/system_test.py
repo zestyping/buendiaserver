@@ -79,6 +79,7 @@ class SystemTest(unittest.TestCase):
             unicode_name,))))
 
     def test_list_patients(self):
+        """Testing retrieval of patients."""
         # List an empty database.
         self.assertEqual([], self.get_json('/patients'))
 
@@ -113,6 +114,26 @@ class SystemTest(unittest.TestCase):
         # Test searching is case-insensitive.
         self.assertEqual(1, len(self.get_json('/patients?search=tom')))
 
+    def test_escaping_input(self):
+        """Testing all incoming variables are properly escaped."""
+        quote_name = quote('T\'om')
+        # Add one patient that contains quotes.
+        http_post('/patients', 'id=test.1&given_name=%s&status=suspected' % (
+            quote_name,))
+        # Test the patient is stored and can be retrieved.
+        patients = self.get_json('/patients')
+        self.assertEqual(1, len(patients))
+
+        # Test the name of the patient is still the same.
+        self.assertEqual('T\'om', patients[0]['given_name'])
+
+        # Test search is properly escaping the incoming variables
+        self.assertEqual(1, len(self.get_json(
+            quote('/patients?search=%s' % (quote_name, )))))
+
+        # Test field match is properly escaping the incoming variables.
+        self.assertEqual(1, len(self.get_json(
+            quote('/patients?given_name=%s' % (quote_name, )))))
 
     def test_add_new_patient(self):
         # TODO(ping): The POST API should take JSON, not form-encoded data.
