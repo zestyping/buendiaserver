@@ -7,17 +7,32 @@ SRCDIR=$ROOT/src
 
 if [ -z "$OUTDIR" ]; then
   echo "Usage: $0 <output-directory>"
-  echo "    Erases <output-directory>, then compiles the server there."
+  echo "    Builds the server in <output-directory>."
   exit 1
+fi
+build_needed=yes
+
+# If nothing has changed since the last build in the same directory, quit.
+if [ -f $OUTDIR/built ]; then
+  if [ -z $(find $SRCDIR -name '*.java' -newer $OUTDIR/built) ]; then
+    echo "No .java files changed since last build; $OUTDIR is up to date."
+    build_needed=no
+  fi
 fi
 
 # Compile all the source files into class files.
-rm -rf $OUTDIR
-mkdir -p $OUTDIR
-echo "Compiling..."
-javac -cp $CLASSPATH $(find $SRCDIR -name '*.java') -d $OUTDIR || exit 1
-echo "...class files written to $OUTDIR successfully."
+if [ $build_needed == yes ]; then
+  mkdir -p $OUTDIR
+  echo "Compiling..."
+  javac -cp $CLASSPATH $(find $SRCDIR -name '*.java') -d $OUTDIR || exit 1
+  touch $OUTDIR/built
+  echo "...class files written to $OUTDIR successfully."
+fi
 
 # The server needs config.prop, install/ddl.sql, and errors/ to exist.
-cp -pr $ROOT/config.prop $ROOT/install $OUTDIR
-mkdir $OUTDIR/errors
+mkdir -p $OUTDIR/errors $OUTDIR/install
+for file in config.prop install/ddl.sql; do
+  if [ ! -f $OUTDIR/$file ]; then
+    cp -pr $ROOT/$file $OUTDIR/$file
+  fi
+done

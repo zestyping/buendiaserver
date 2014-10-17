@@ -7,7 +7,7 @@ MAINCLASS=org.projectbuendia.server.Server
 
 if [ -z "$OUTDIR" ]; then
   echo "Usage: $0 <output-directory>"
-  echo "    Erases <output-directory>, then compiles and runs the server there."
+  echo "    Builds and runs the server in <output-directory>."
   exit 1
 fi
 
