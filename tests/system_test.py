@@ -1,9 +1,11 @@
 #!/usr/bin/env python
 
+import re
 import json
 import sqlite3
 import unittest
 import urllib2
+from urllib import quote
 
 SQLITE_FILE = 'msf.db'
 SERVER_ROOT = 'http://localhost:8080'
@@ -38,6 +40,10 @@ class SystemTest(unittest.TestCase):
         """Issues a GET request and decodes the response as JSON."""
         status_code, headers, content = http_get(path)
         self.assertEqual(200, status_code)
+        # Ensure the content is properly encoded to unicode
+        charset_match = re.match(r".*charset=(.+)", headers['content-type'])
+        if charset_match:
+            content = unicode(content, charset_match.group(1))
         return json.loads(content)
 
     def post_json(self, path, data):
@@ -53,6 +59,24 @@ class SystemTest(unittest.TestCase):
         patients = self.get_json('/patients')
         self.assertEqual(1, len(patients))
         self.assertEqual('{"}', patients[0]['given_name'])
+
+    def test_unicode(self):
+        """Test support for unicode in the Patient API."""
+        # Add one patient; confirm it appears in the list of all patients.
+        unicode_name = quote(u"T\u00F8m".encode("utf8"))
+        http_post('/patients', "id=test.1&given_name=%s&status=suspected" % (
+            unicode_name,))
+        patients = self.get_json('/patients')
+        self.assertEqual(1, len(patients))
+        # Test if the name stayed the same
+        self.assertEqual(u"T\u00F8m", patients[0]['given_name'])
+
+        # Test if patients can be retrieved by unicode characters.
+        self.assertEqual(1, len(self.get_json('/patients?given_name=%s' % (
+            unicode_name,))))
+        # Test if patients can be searched by unicode characters
+        self.assertEqual(1, len(self.get_json('/patients?search=%s' % (
+            unicode_name,))))
 
     def test_list_patients(self):
         # List an empty database.
