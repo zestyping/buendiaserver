@@ -23,7 +23,7 @@ def http_post(path, content, headers={}):
 def reset_db():
     """Clears all existing tables in the SQLite database."""
     c = sqlite3.Connection(SQLITE_FILE)
-    tables = c.execute('select tbl_name from sqlite_master where type="table"')
+    tables = c.execute("select tbl_name from sqlite_master where type='table'")
     for table in tables:
         c.execute('delete from %s' % table)
     c.commit()
@@ -55,9 +55,38 @@ class SystemTest(unittest.TestCase):
         self.assertEqual('{"}', patients[0]['given_name'])
 
     def test_list_patients(self):
+        # List an empty database.
         self.assertEqual([], self.get_json('/patients'))
 
+        # Add one patient; confirm it appears in the list of all patients.
+        http_post('/patients', 'id=test.1&given_name=Tom&status=suspected')
+        self.assertEqual(1, len(self.get_json('/patients')))
+
+        # Test matching on single fields.
+        self.assertEqual(0, len(self.get_json('/patients?status=foo')))
+        self.assertEqual(1, len(self.get_json('/patients?status=suspected')))
+        self.assertEqual(0, len(self.get_json('/patients?given_name=Bob')))
+        self.assertEqual(1, len(self.get_json('/patients?given_name=Tom')))
+
+        # Test matching on multiple fields.
+        self.assertEqual(0, len(self.get_json(
+            '/patients?given_name=Tom&status=foo')))
+        self.assertEqual(0, len(self.get_json(
+            '/patients?given_name=Bob&status=suspected')))
+        self.assertEqual(1, len(self.get_json(
+            '/patients?given_name=Tom&status=suspected')))
+
+        # Test searching by substring.
+        self.assertEqual(0, len(self.get_json('/patients?search=x')))
+        self.assertEqual(1, len(self.get_json('/patients?search=Tom')))
+        self.assertEqual(1, len(self.get_json('/patients?search=om')))
+        self.assertEqual(1, len(self.get_json('/patients?search=To')))
+
     def test_add_new_patient(self):
+<<<<<<< HEAD
+=======
+        # TODO(ping): The POST API should take JSON, not form-encoded data.
+>>>>>>> zestyping-prepared-statements
         # self.post_json('/patients', {'id': 'test.1', 'given_name': 'Tom'})
         http_post('/patients', 'id=test.1&given_name=Tom&status=suspected')
 
