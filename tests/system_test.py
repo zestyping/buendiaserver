@@ -83,14 +83,7 @@ class SystemTest(unittest.TestCase):
         self.assertEqual(1, len(self.get_json('/patients?search=To')))
 
     def test_add_new_patient(self):
-<<<<<<< HEAD
-<<<<<<< HEAD
-=======
         # TODO(ping): The POST API should take JSON, not form-encoded data.
->>>>>>> zestyping-prepared-statements
-=======
-        # TODO(ping): The POST API should take JSON, not form-encoded data.
->>>>>>> zestyping-prepared-statements
         # self.post_json('/patients', {'id': 'test.1', 'given_name': 'Tom'})
         http_post('/patients', 'id=test.1&given_name=Tom&status=suspected')
 

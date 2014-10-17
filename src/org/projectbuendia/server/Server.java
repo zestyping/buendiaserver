@@ -109,7 +109,7 @@ public final class Server {
         Logging.log("INFO", Config.SQLITE_PATH + " (sqlite) took "+(end - start)+" ms to connect");
 
         // Split ddl.sql into statements and execute each one (executeUpdate
-        // only executes one statement at a time).
+        // can only execute one statement at a time).
         String schema = "";
         try {
             schema = FileChecks.readFile("install/ddl.sql");

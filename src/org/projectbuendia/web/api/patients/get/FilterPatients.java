@@ -1,11 +1,13 @@
 package org.projectbuendia.web.api.patients.get;
 
+import org.projectbuendia.models.Patient;
 import org.projectbuendia.server.Server;
 import org.projectbuendia.sqlite.SQLiteStatement;
 import org.projectbuendia.web.api.ApiInterface;
 import org.projectbuendia.web.api.SharedFunctions;
 
 import com.google.common.base.Joiner;
+import com.google.gson.Gson;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import java.io.IOException;
@@ -54,6 +56,7 @@ public class FilterPatients implements ApiInterface {
         // instead of Map<String, String[]> so we don't have to [0] all over.
         final String[] searchParams = parameterMap.get("search");
         if (searchParams != null) {
+            // In SQLite, || is the string concatenation operator.
             conditions.add("id like '%' || ? || '%'");
             args.add(searchParams[0]);
             conditions.add("given_name like '%' || ? || '%'");
@@ -91,15 +94,14 @@ public class FilterPatients implements ApiInterface {
         System.out.println("with args: " + Joiner.on(", ").join(args));
 
         // Execute the query and collect all the results into a list.
-        final List<String> jsonResults = new ArrayList();
         final boolean[] finished = {false};
+        final List patients = new ArrayList();
         Server.getLocalDatabase().executeStatement(
             new SQLiteStatement(query, args.toArray()) {
             @Override
             public void execute(ResultSet result) throws SQLException {
                 while (result.next()) {
-                    jsonResults.add(
-                        SharedFunctions.SpecificPatientResponse(result));
+                    patients.add(Patient.fromResultSet(result));
                 }
                 finished[0] = true;
             }
@@ -121,8 +123,7 @@ public class FilterPatients implements ApiInterface {
         // Write out all the results as a JSON array.
         response.setStatus(HttpServletResponse.SC_OK);
         try {
-            response.getWriter().write(
-                "[" + Joiner.on(", ").join(jsonResults) + "]");
+            response.getWriter().write((new Gson()).toJson(patients));
         } catch (IOException e) {
             e.printStackTrace();
         }
