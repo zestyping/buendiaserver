@@ -110,20 +110,27 @@ public final class SQLiteConnection {
         }
     }
 
-    public int executeUpdate(String sql) {
-        return this.executeUpdateInternal(sql);
+    public int executeUpdate(String sql, Object...params) {
+        return this.executeUpdateInternal(sql, params);
     }
 
-    public int executeUpdateInternal(String sql) {
+    public int executeUpdateInternal(String sql, Object...params) {
         if (!this.isConnected()) {
             return -1;
         }
+        PreparedStatement st;
         try {
+            st = connection.prepareStatement(sql);
+            int i = 0;
+            for(Object o : params) {
+                i++;
+                st.setObject(i, o);
+            }
             /*if (statement.isClosed()) {
                 Logging.log("SEVERE", sql + "statement was closed");
                 statement = connection.createStatement();
             }*/
-            return statement.executeUpdate(sql);
+            return st.executeUpdate();
         } catch (SQLException e) {
             return -2;
         }
