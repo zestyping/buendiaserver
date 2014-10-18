@@ -6,24 +6,56 @@ import org.projectbuendia.sqlite.SQLiteUpdate;
 import org.projectbuendia.web.api.ApiInterface;
 import org.projectbuendia.web.api.SharedFunctions;
 
+import com.google.common.base.Joiner;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import java.io.IOException;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.HashSet;
 import java.util.regex.Pattern;
 
 /**
  * Created by wwadewitte on 10/11/14.
  */
 public class AddNewPatient implements ApiInterface {
+    // All the fields in the patients table that can be set during an INSERT.
+    static final HashSet INSERTABLE_COLUMNS = new HashSet(Arrays.asList(
+        "status",
+        "given_name",
+        "family_name",
+        "assigned_location_zone_id",
+        "assigned_location_tent_id",
+        "assigned_location_bed",
+        "age_years",
+        "age_months",
+        "age_certainty",
+        "age_type",
+        "gender",
+        "important_information",
+        "pregnancy_start_timestamp",
+        "first_showed_symptoms_timestamp",
+        "movement",
+        "eating",
+        "origin_location",
+        "next_of_kin"
+    ));
+
     @Override
-    public void call(final HttpServletRequest request, final HttpServletResponse response,final HashMap<String, String> urlVariables, final Map<String, String[]> parameterMap, final HashMap<String, String> payLoad){
+    public void call(final HttpServletRequest request,
+                     final HttpServletResponse response,
+                     final HashMap<String, String> urlVariables,
+                     final Map<String, String[]> parameterMap,
+                     final HashMap<String, String> payLoad) {
 
         final String[] responseText = new String[]{null};
         final int[] lastId = new int[]{-1};
+
         SQLiteQuery query = new SQLiteQuery("SELECT `id`, count(1) FROM `patients` ORDER BY ROWID DESC LIMIT 1") {
 
             @Override
@@ -72,52 +104,28 @@ public class AddNewPatient implements ApiInterface {
 
         int newId = lastId[0] + 1;
 
+        List<String> fields = new ArrayList();
+        List<String> values = new ArrayList();
+        List<String> args = new ArrayList();
 
-        Server.getLocalDatabase().executeUpdate(new SQLiteUpdate("" +
-                "insert into `patients`" +
-                " (" +
-                "`id`" +
-                (payLoad.get("status") != null ? ",`status`" : "") +
-                (payLoad.get("given_name") != null ? ",`given_name`" : "") +
-                (payLoad.get("family_name") != null ? ",`family_name`" : "") +
-                (payLoad.get("assigned_location_zone_id") != null ? ",`assigned_location_zone_id`" : "") +
-                (payLoad.get("assigned_location_tent_id") != null ? ",`assigned_location_tent_id`" : "") +
-                (payLoad.get("assigned_location_bed") != null ? ",`assigned_location_bed`" : "") +
-                (payLoad.get("age_years") != null ? ",`age_years`" : "") +
-                (payLoad.get("age_months") != null ? ",`age_months`" : "") +
-                (payLoad.get("age_certainty") != null ? ",`age_certainty`" : "") +
-                (payLoad.get("age_type") != null ? ",`age_type`" : "") +
-                (payLoad.get("gender") != null ? ",`gender`" : "") +
-                (payLoad.get("important_information") != null ? ",`important_information`" : "") +
-                (payLoad.get("pregnancy_start_timestamp") != null ? ",`pregnancy_start_timestamp`" : "") +
-                (payLoad.get("first_showed_symptoms_timestamp") != null ? ",`first_showed_symptoms_timestamp`" : "") +
-                (payLoad.get("movement") != null ? ",`movement`" : "") +
-                (payLoad.get("eating") != null ? ",`eating`" : "") +
-                (payLoad.get("origin_location") != null ? ",`origin_location`" : "") +
-                (payLoad.get("next_of_kin") != null ? ",`next_of_kin`" : "") +
-                ") " +
-                "values" +
-                " ('MSF.TS."+ newId +"'" +
-                (payLoad.get("status") != null ? ",'"+payLoad.get("status") + "'": "") +
-                (payLoad.get("given_name") != null ? ",'"+payLoad.get("given_name")+ "'"  : "") +
-                (payLoad.get("family_name") != null ? ",'"+payLoad.get("family_name")+ "'"  : "") +
-                (payLoad.get("assigned_location_zone_id") != null ? ","+payLoad.get("assigned_location_zone_id") : "") +
-                (payLoad.get("assigned_location_tent_id") != null ? ","+payLoad.get("assigned_location_tent_id") : "") +
-                (payLoad.get("assigned_location_bed") != null ? ","+payLoad.get("assigned_location_bed") : "") +
-                (payLoad.get("age_years") != null ? ","+payLoad.get("age_years") : "") +
-                (payLoad.get("age_months") != null ? ","+payLoad.get("age_months") : "") +
-                (payLoad.get("age_certainty") != null ? ",'"+payLoad.get("age_certainty")+ "'"  : "") +
-                (payLoad.get("age_type") != null ? ",'"+payLoad.get("age_type")+ "'"  : "") +
-                (payLoad.get("gender") != null ? ",'"+payLoad.get("gender")+ "'"  : "") +
-                (payLoad.get("important_information") != null ? ",'"+payLoad.get("important_information")+ "'"  : "") +
-                (payLoad.get("pregnancy_start_timestamp") != null ? ","+payLoad.get("pregnancy_start_timestamp") : "") +
-                (payLoad.get("first_showed_symptoms_timestamp") != null ? ","+payLoad.get("first_showed_symptoms_timestamp") : "") +
-                (payLoad.get("movement") != null ? ",'"+payLoad.get("movement")+ "'"  : "") +
-                (payLoad.get("eating") != null ? ",'"+payLoad.get("eating")+ "'"  : "") +
-                (payLoad.get("origin_location") != null ? ",'"+payLoad.get("origin_location")+ "'"  : "") +
-                (payLoad.get("next_of_kin") != null ? ",'"+payLoad.get("next_of_kin") + "'" : "") +
-                ")"
-        ));
+        fields.add("`id`");
+        values.add("?");
+        args.add("MSF.TS."+ newId);
+
+        for(String s : payLoad.keySet()) {
+            if (INSERTABLE_COLUMNS.contains(s)) {
+                fields.add("`"+s+"`");
+                values.add("?");
+                args.add(payLoad.get(s));
+            }
+        }
+
+        String insertQuery = "insert into `patients`";
+        insertQuery += " (" + Joiner.on(", ").join(fields) + ")";
+        insertQuery += " values (" + Joiner.on(", ").join(values) + ")";
+
+        Server.getLocalDatabase().executeUpdate(
+            new SQLiteUpdate(insertQuery, args.toArray()));
 
         Server.setDoingPatient(false);
 
