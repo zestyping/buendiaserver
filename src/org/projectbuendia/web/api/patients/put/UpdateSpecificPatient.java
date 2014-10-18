@@ -1,7 +1,7 @@
 package org.projectbuendia.web.api.patients.put;
 
 import org.projectbuendia.server.Server;
-import org.projectbuendia.sqlite.SQLiteQuery;
+import org.projectbuendia.sqlite.SQLiteStatement;
 import org.projectbuendia.sqlite.SQLiteUpdate;
 import org.projectbuendia.web.api.ApiInterface;
 import org.projectbuendia.web.api.SharedFunctions;
@@ -68,22 +68,26 @@ public class UpdateSpecificPatient implements ApiInterface {
         updateQuery += Joiner.on(", ").join(updates);
         updateQuery += " where `id` = ?";
 
-		args.add(urlVariables.get("id"));
+        args.add(urlVariables.get("id"));
 
         Server.getLocalDatabase().executeUpdate(
             new SQLiteUpdate(updateQuery, args.toArray()));
 
-        SQLiteQuery checkQuery = new SQLiteQuery("SELECT * FROM `patients` WHERE `id` = '"+urlVariables.get("id")+"'  ") {
+        // Retrieve stored values
+        List<String> args2 = new ArrayList();
+        String checkQuery = "SELECT * FROM `patients` WHERE `id` = ?";
+        args2.add(urlVariables.get("id"));
 
-            @Override
-            public void execute(ResultSet result) throws SQLException {
-                while (result.next()) {
-                    responseText[0] = SharedFunctions.SpecificPatientResponse(result);
+        Server.getLocalDatabase().executeStatement(
+            new SQLiteStatement(checkQuery, args2.toArray()) {
+                @Override
+                public void execute(ResultSet result) throws SQLException {
+                    while (result.next()) {
+                        responseText[0] = SharedFunctions.SpecificPatientResponse(result);
+                    }
                 }
             }
-        };
-
-        Server.getLocalDatabase().executeQuery(checkQuery);
+        );
 
         while(responseText[0] == null) {
             // wait until the response is given
