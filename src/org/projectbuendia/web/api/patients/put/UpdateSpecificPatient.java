@@ -3,10 +3,13 @@ package org.projectbuendia.web.api.patients.put;
 import org.projectbuendia.server.Server;
 import org.projectbuendia.sqlite.SQLiteStatement;
 import org.projectbuendia.sqlite.SQLiteUpdate;
+import org.projectbuendia.utils.InvalidInputException;
+import org.projectbuendia.utils.JsonUtils;
 import org.projectbuendia.web.api.ApiInterface;
 import org.projectbuendia.web.api.SharedFunctions;
 
 import com.google.gson.JsonElement;
+import com.google.gson.JsonObject;
 import com.google.common.base.Joiner;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
@@ -51,18 +54,26 @@ public class UpdateSpecificPatient implements ApiInterface {
                      final HttpServletResponse response,
                      final HashMap<String, String> urlVariables,
                      final Map<String, String[]> parameterMap,
-                     final JsonElement json,
+                     final JsonObject json,
                      final HashMap<String, String> payLoad) {
 
         final String[] responseText = new String[]{null};
 
-        List<String> updates = new ArrayList();
-        List<String> args = new ArrayList();
+        List<String> updates = new ArrayList<String>();
+        List<Object> args = new ArrayList<Object>();
 
-        for(String s : payLoad.keySet()) {
-            if (UPDATABLE_COLUMNS.contains(s)) {
-                updates.add("`"+s+"` = ?");
-                args.add(payLoad.get(s));
+        for (Map.Entry<String, JsonElement> entry : json.entrySet()) {
+            String key = entry.getKey();
+            Object value;
+            try {
+                value = JsonUtils.toStringOrLongOrNull(entry.getValue());
+            } catch (InvalidInputException e) {
+                // TODO(kpy): Let this exception return an HTTP 400.
+                continue;
+            }
+            if (UPDATABLE_COLUMNS.contains(key)) {
+                updates.add(key + " = ?");
+                args.add(value);
             }
         }
 

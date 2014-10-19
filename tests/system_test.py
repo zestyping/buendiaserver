@@ -11,9 +11,8 @@ SQLITE_FILE = 'msf.db'
 SERVER_ROOT = 'http://localhost:8080'
 HTTP_TIMEOUT = 10  # require HTTP replies within this many seconds
 
-def http_request(*args, **kwargs):
+def http_request(request):
     """Issues an HTTP request, treating HTTPErrors as repsonses."""
-    request = urllib2.Request(*args, **kwargs)
     try:
         response = urllib2.urlopen(request, timeout=HTTP_TIMEOUT)
     except urllib2.HTTPError, error:
@@ -22,11 +21,17 @@ def http_request(*args, **kwargs):
 
 def http_get(path):
     """Issues a GET request and returns: (status_code, headers, content)."""
-    return http_request(SERVER_ROOT + path)
+    return http_request(urllib2.Request(SERVER_ROOT + path))
 
 def http_post(path, content, headers={}):
     """Issues a POST request and returns: (status_code, headers, content)."""
-    return http_request(SERVER_ROOT + path, content, headers)
+    return http_request(urllib2.Request(SERVER_ROOT + path, content, headers))
+
+def http_put(path, content, headers={}):
+    """Issues a PUT request and returns: (status_code, headers, content)."""
+    request = urllib2.Request(SERVER_ROOT + path, content, headers)
+    request.get_method = lambda: 'PUT'
+    return http_request(request)
 
 def http_form_post(path, content):
     return http_post(path, content, headers={
@@ -42,6 +47,10 @@ def http_put(path, content, headers={}):
     req.get_method = lambda: 'PUT'
     u = urllib2.urlopen(req, timeout=HTTP_TIMEOUT)
     return u.getcode(), dict(u.headers), u.read()
+
+def http_json_put(path, content):
+    return http_put(path, content, headers={
+        'Content-Type': 'application/json'})
 
 def reset_db():
     """Clears all existing tables in the SQLite database."""
@@ -69,8 +78,12 @@ class SystemTest(unittest.TestCase):
 
     def post_json(self, path, data):
         """Issues a POST request containing the given data encoded in JSON."""
-        status_code, headers, content = http_post(
-            path, json.dumps(data), {'Content-Type': 'application/json'})
+        status_code, headers, content = http_json_post(path, json.dumps(data))
+        self.assertEqual(200, status_code)
+
+    def put_json(self, path, data):
+        """Issues a PUT request containing the given data encoded in JSON."""
+        status_code, headers, content = http_json_put(path, json.dumps(data))
         self.assertEqual(200, status_code)
 
     def test_json_serialization(self):
@@ -181,21 +194,21 @@ class SystemTest(unittest.TestCase):
         patient2_id = json.loads(response)['id']
 
         # Check if patient Tom's name can be updated
-        http_put('/patients/'+patient1_id, 'given_name=John')
-        patients = self.get_json('/patients?id='+patient1_id)
+        self.put_json('/patients/' + patient1_id, {'given_name': 'John'})
+        patients = self.get_json('/patients?id=' + patient1_id)
         self.assertEqual(1, len(patients))
         self.assertEqual('John', patients[0]['given_name'])
         self.assertEqual('suspected', patients[0]['status'])
 
         # Check if patient Tom (now John)'s status can be updated
-        http_put('/patients/'+patient1_id, 'status=discharged')
-        patients = self.get_json('/patients?id='+patient1_id)
+        self.put_json('/patients/' + patient1_id, {'status': 'discharged'})
+        patients = self.get_json('/patients?id=' + patient1_id)
         self.assertEqual(1, len(patients))
         self.assertEqual('John', patients[0]['given_name'])
         self.assertEqual('discharged', patients[0]['status'])
 
         # Check if the control patient stayed the same
-        patients = self.get_json('/patients?id='+patient2_id)
+        patients = self.get_json('/patients?id=' + patient2_id)
         self.assertEqual(1, len(patients))
         self.assertEqual('Bob', patients[0]['given_name'])
         self.assertEqual('suspected', patients[0]['status'])
@@ -208,6 +221,20 @@ class SystemTest(unittest.TestCase):
 
         code, headers, response = http_post('/patients', '{', {
             'Content-Type': 'application/json; charset=utf-8'})
+        self.assertEqual(400, code)
+
+        # JSON objects should be accepted.
+        code, headers, response = http_post('/patients', '{}', {
+            'Content-Type': 'application/json'})
+        self.assertEqual(200, code)
+
+        # JSON non-objects should be rejected.
+        code, headers, response = http_post('/patients', '3', {
+            'Content-Type': 'application/json'})
+        self.assertEqual(400, code)
+
+        code, headers, response = http_post('/patients', '"a"', {
+            'Content-Type': 'application/json'})
         self.assertEqual(400, code)
 
         # No JSON parsing should occur if the content type isn't JSON.

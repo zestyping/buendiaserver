@@ -14,7 +14,7 @@ build_needed=yes
 
 # If nothing has changed since the last build in the same directory, quit.
 if [ -f $OUTDIR/built ]; then
-  if [ -z $(find $SRCDIR -name '*.java' -newer $OUTDIR/built) ]; then
+  if [ -z "$(find $SRCDIR -name '*.java' -newer $OUTDIR/built)" ]; then
     echo "No .java files changed since last build; $OUTDIR is up to date."
     build_needed=no
   fi

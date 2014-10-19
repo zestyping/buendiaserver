@@ -3,7 +3,7 @@ package org.projectbuendia.web.api;
 import org.projectbuendia.fileops.Logging;
 import org.projectbuendia.web.JettyServer;
 
-import com.google.gson.JsonElement;
+import com.google.gson.JsonObject;
 import com.google.gson.JsonParseException;
 import com.google.gson.JsonParser;
 import javax.servlet.http.HttpServlet;
@@ -23,7 +23,7 @@ public abstract class ApiHandler extends HttpServlet {
 
     protected abstract String getBaseUrl();
 
-    private JsonElement json = null;
+    private JsonObject json = null;
     private HashMap<String, String> payLoad = new HashMap<String, String>();
 
     @Override
@@ -82,8 +82,11 @@ public abstract class ApiHandler extends HttpServlet {
         type = type.split(";")[0].trim();
         if (type.equals("application/json")) {
             try {
-                json = new JsonParser().parse(body);
-            } catch (JsonParseException e) {
+                json = new JsonParser().parse(body).getAsJsonObject();
+            } catch (JsonParseException e) {  // syntax error
+                response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
+                throw e;  // don't call the request handler
+            } catch (IllegalStateException e) {  // not a JSON object
                 response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
                 throw e;  // don't call the request handler
             }
