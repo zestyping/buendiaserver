@@ -11,16 +11,30 @@ SQLITE_FILE = 'msf.db'
 SERVER_ROOT = 'http://localhost:8080'
 HTTP_TIMEOUT = 10  # require HTTP replies within this many seconds
 
+def http_request(*args, **kwargs):
+    """Issues an HTTP request, treating HTTPErrors as repsonses."""
+    request = urllib2.Request(*args, **kwargs)
+    try:
+        response = urllib2.urlopen(request, timeout=HTTP_TIMEOUT)
+    except urllib2.HTTPError, error:
+        response = error  # an HTTPError is also a response object
+    return response.getcode(), dict(response.headers), response.read()
+
 def http_get(path):
     """Issues a GET request and returns: (status_code, headers, content)."""
-    u = urllib2.urlopen(SERVER_ROOT + path, timeout=HTTP_TIMEOUT)
-    return u.getcode(), dict(u.headers), u.read()
+    return http_request(SERVER_ROOT + path)
 
 def http_post(path, content, headers={}):
     """Issues a POST request and returns: (status_code, headers, content)."""
-    req = urllib2.Request(SERVER_ROOT + path, content, headers)
-    u = urllib2.urlopen(req, timeout=HTTP_TIMEOUT)
-    return u.getcode(), dict(u.headers), u.read()
+    return http_request(SERVER_ROOT + path, content, headers)
+
+def http_form_post(path, content):
+    return http_post(path, content, headers={
+        'Content-Type': 'application/x-www-form-urlencoded'})
+
+def http_json_post(path, content):
+    return http_post(path, content, headers={
+        'Content-Type': 'application/json'})
 
 def http_put(path, content, headers={}):
     """Issues a PUT request and returns: (status_code, headers, content)."""
@@ -128,7 +142,7 @@ class SystemTest(unittest.TestCase):
         """Testing all incoming variables are properly escaped."""
         quote_name = quote('T\'om')
         # Add one patient that contains quotes.
-        http_post('/patients', 'given_name=%s&status=suspected' % (
+        http_form_post('/patients', 'given_name=%s&status=suspected' % (
             quote_name,))
         # Test the patient is stored and can be retrieved.
         patients = self.get_json('/patients')
@@ -148,7 +162,7 @@ class SystemTest(unittest.TestCase):
     def test_add_new_patient(self):
         # TODO(ping): The POST API should take JSON, not form-encoded data.
         # self.post_json('/patients', {'id': 'test.1', 'given_name': 'Tom'})
-        http_post('/patients', 'given_name=Tom&status=suspected')
+        http_form_post('/patients', 'given_name=Tom&status=suspected')
 
         # Verify that the new patient appears in the list of all patients.
         patients = self.get_json('/patients')
@@ -158,11 +172,11 @@ class SystemTest(unittest.TestCase):
     def test_edit_patient(self):
         """Test editing patients with PUT."""
         # Create patient that will be edited.
-        code, headers, response = http_post('/patients',
+        code, headers, response = http_form_post('/patients',
                 'given_name=Tom&status=suspected')
         patient1_id = json.loads(response)['id']
         # Create patient that will be used as control.
-        code, headers, response = http_post('/patients',
+        code, headers, response = http_form_post('/patients',
                 'given_name=Bob&status=suspected')
         patient2_id = json.loads(response)['id']
 
@@ -185,6 +199,23 @@ class SystemTest(unittest.TestCase):
         self.assertEqual(1, len(patients))
         self.assertEqual('Bob', patients[0]['given_name'])
         self.assertEqual('suspected', patients[0]['status'])
+
+    def test_post_content_type(self):
+        # Bad JSON syntax should be caught for application/json content.
+        code, headers, response = http_post('/patients', '{', {
+            'Content-Type': 'application/json'})
+        self.assertEqual(400, code)
+
+        code, headers, response = http_post('/patients', '{', {
+            'Content-Type': 'application/json; charset=utf-8'})
+        self.assertEqual(400, code)
+
+        # No JSON parsing should occur if the content type isn't JSON.
+        # At the moment, a 200 status is the only way to tell that parsing
+        # didn't occur, even though an incorrect type should also give 400.
+        code, headers, response = http_post('/patients', '{', {
+            'Content-Type': 'application/x-www-form-urlencoded'})
+        self.assertEqual(200, code)
 
 
 if __name__ == '__main__':

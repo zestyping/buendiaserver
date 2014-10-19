@@ -3,7 +3,9 @@ package org.projectbuendia.web.api;
 import org.projectbuendia.fileops.Logging;
 import org.projectbuendia.web.JettyServer;
 
-import javax.servlet.ServletException;
+import com.google.gson.JsonElement;
+import com.google.gson.JsonParseException;
+import com.google.gson.JsonParser;
 import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
@@ -21,38 +23,32 @@ public abstract class ApiHandler extends HttpServlet {
 
     protected abstract String getBaseUrl();
 
+    private JsonElement json = null;
     private HashMap<String, String> payLoad = new HashMap<String, String>();
 
     @Override
-    protected void doGet(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException{
+    protected void doGet(HttpServletRequest request, HttpServletResponse response) throws IOException{
         callHandler("get", request, response);
     }
     @Override
-    protected void doPost(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException{
-        System.out.println("yee");
-        try {
-            reportPayload(request);
-            callHandler("post", request, response);
-        }catch(Exception e) {
-            e.printStackTrace();
-        }
+    protected void doPost(HttpServletRequest request, HttpServletResponse response) throws IOException{
+        callHandler("post", request, response);
     }
     @Override
-    protected void doPut(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException{
-        reportPayload(request);
+    protected void doPut(HttpServletRequest request, HttpServletResponse response) throws IOException{
         callHandler("put", request, response);
     }
     @Override
-    protected void doDelete(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException{
-        reportPayload(request);
+    protected void doDelete(HttpServletRequest request, HttpServletResponse response) throws IOException{
         callHandler("delete", request, response);
     }
 
     private void callHandler(String method, HttpServletRequest request, HttpServletResponse response) throws IOException {
         try {
+            reportPayload(request, response);
 
             if (request.getPathInfo() == null) {
-                JettyServer.getApiStructure(method).get(getBaseUrl()).call(request, response, urlVariables, request.getParameterMap(), payLoad);
+                JettyServer.getApiStructure(method).get(getBaseUrl()).call(request, response, urlVariables, request.getParameterMap(), json, payLoad);
                 return;
             }
             String[] pathArray = request.getPathInfo().replaceFirst("/", "").split("/");
@@ -71,24 +67,27 @@ public abstract class ApiHandler extends HttpServlet {
                 }
             }
 
-            try {
-                JettyServer.getApiStructure(method).get(lastFoundHandler.toString()).call(request, response, urlVariables, request.getParameterMap(), payLoad);
-            } catch (Exception e) {
-                e.printStackTrace();
-            }
-        }catch(Exception e) {
+            JettyServer.getApiStructure(method).get(lastFoundHandler.toString()).call(request, response, urlVariables, request.getParameterMap(), json, payLoad);
+        } catch (Exception e) {
             e.printStackTrace();
         }
     }
 
-    public void reportPayload(HttpServletRequest request) {
-        String body = null;
-        try {
-            body = SharedFunctions.getBody(request);
-        } catch (IOException e) {
-            Logging.log("invalid body", e);
-        }
-        if(body != null) {
+    public void reportPayload(HttpServletRequest request, HttpServletResponse response) throws IOException {
+        String type = request.getContentType();
+        if (type == null) return;
+        String body = SharedFunctions.getBody(request);
+        if (body == null) return;
+
+        type = type.split(";")[0].trim();
+        if (type.equals("application/json")) {
+            try {
+                json = new JsonParser().parse(body);
+            } catch (JsonParseException e) {
+                response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
+                throw e;  // don't call the request handler
+            }
+        } else if (type.equals("application/x-www-form-urlencoded")) {
             String[] nodes = body.split(Pattern.quote("&"));
             for(String s : nodes) {
                 if(s.length() <= 1) {

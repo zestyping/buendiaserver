@@ -6,6 +6,7 @@ import org.projectbuendia.sqlite.SQLiteUpdate;
 import org.projectbuendia.web.api.ApiInterface;
 import org.projectbuendia.web.api.SharedFunctions;
 
+import com.google.gson.JsonElement;
 import com.google.common.base.Joiner;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
@@ -50,6 +51,7 @@ public class UpdateSpecificPatient implements ApiInterface {
                      final HttpServletResponse response,
                      final HashMap<String, String> urlVariables,
                      final Map<String, String[]> parameterMap,
+                     final JsonElement json,
                      final HashMap<String, String> payLoad) {
 
         final String[] responseText = new String[]{null};
