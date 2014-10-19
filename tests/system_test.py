@@ -22,6 +22,13 @@ def http_post(path, content, headers={}):
     u = urllib2.urlopen(req, timeout=HTTP_TIMEOUT)
     return u.getcode(), dict(u.headers), u.read()
 
+def http_put(path, content, headers={}):
+    """Issues a PUT request and returns: (status_code, headers, content)."""
+    req = urllib2.Request(SERVER_ROOT + path, content, headers)
+    req.get_method = lambda: 'PUT'
+    u = urllib2.urlopen(req, timeout=HTTP_TIMEOUT)
+    return u.getcode(), dict(u.headers), u.read()
+
 def reset_db():
     """Clears all existing tables in the SQLite database."""
     c = sqlite3.Connection(SQLITE_FILE)
@@ -147,6 +154,37 @@ class SystemTest(unittest.TestCase):
         patients = self.get_json('/patients')
         self.assertEqual(1, len(patients))
         self.assertEqual('Tom', patients[0]['given_name'])
+
+    def test_edit_patient(self):
+        """Test editing patients with PUT."""
+        # Create patient that will be edited.
+        code, headers, response = http_post('/patients',
+                'given_name=Tom&status=suspected')
+        patient1_id = json.loads(response)['id']
+        # Create patient that will be used as control.
+        code, headers, response = http_post('/patients',
+                'given_name=Bob&status=suspected')
+        patient2_id = json.loads(response)['id']
+
+        # Check if patient Tom's name can be updated
+        http_put('/patients/'+patient1_id, 'given_name=John')
+        patients = self.get_json('/patients?id='+patient1_id)
+        self.assertEqual(1, len(patients))
+        self.assertEqual('John', patients[0]['given_name'])
+        self.assertEqual('suspected', patients[0]['status'])
+
+        # Check if patient Tom (now John)'s status can be updated
+        http_put('/patients/'+patient1_id, 'status=discharged')
+        patients = self.get_json('/patients?id='+patient1_id)
+        self.assertEqual(1, len(patients))
+        self.assertEqual('John', patients[0]['given_name'])
+        self.assertEqual('discharged', patients[0]['status'])
+
+        # Check if the control patient stayed the same
+        patients = self.get_json('/patients?id='+patient2_id)
+        self.assertEqual(1, len(patients))
+        self.assertEqual('Bob', patients[0]['given_name'])
+        self.assertEqual('suspected', patients[0]['status'])
 
 
 if __name__ == '__main__':
