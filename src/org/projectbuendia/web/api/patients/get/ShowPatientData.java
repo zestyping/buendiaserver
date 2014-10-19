@@ -6,6 +6,7 @@ import org.projectbuendia.sqlite.SQLiteQuery;
 import org.projectbuendia.web.api.ApiInterface;
 
 import com.google.gson.Gson;
+import com.google.gson.JsonElement;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import java.io.IOException;
@@ -19,7 +20,7 @@ import java.util.Map;
  */
 public class ShowPatientData implements ApiInterface {
     @Override
-    public void call(final HttpServletRequest request, final HttpServletResponse response,final HashMap<String, String> urlVariables, final Map<String, String[]> parameterMap, final HashMap<String, String> payLoad){
+    public void call(final HttpServletRequest request, final HttpServletResponse response,final HashMap<String, String> urlVariables, final Map<String, String[]> parameterMap, final JsonElement json, final HashMap<String, String> payLoad){
 
         final Patient[] patient = {null};
         SQLiteQuery checkQuery = new SQLiteQuery("SELECT * FROM `patients` WHERE `id` = '"+urlVariables.get("id")+"'  ") {

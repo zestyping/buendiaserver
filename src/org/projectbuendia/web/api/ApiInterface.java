@@ -1,5 +1,6 @@
 package org.projectbuendia.web.api;
 
+import com.google.gson.JsonElement;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import java.io.IOException;
@@ -11,5 +12,5 @@ import java.util.Map;
  */
 public interface ApiInterface {
     /* with payload */
-    public abstract void call(final HttpServletRequest request, final HttpServletResponse response,final HashMap<String, String> urlVariables, final Map<String, String[]> parameterMap, final HashMap<String, String> payLoad) throws IOException;
+    public abstract void call(final HttpServletRequest request, final HttpServletResponse response,final HashMap<String, String> urlVariables, final Map<String, String[]> parameterMap, JsonElement json, final HashMap<String, String> payLoad) throws IOException;
 }
