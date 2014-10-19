@@ -210,6 +210,20 @@ class SystemTest(unittest.TestCase):
             'Content-Type': 'application/json; charset=utf-8'})
         self.assertEqual(400, code)
 
+        # JSON objects should be accepted.
+        code, headers, response = http_post('/patients', '{}', {
+            'Content-Type': 'application/json'})
+        self.assertEqual(200, code)
+
+        # JSON non-objects should be rejected.
+        code, headers, response = http_post('/patients', '3', {
+            'Content-Type': 'application/json'})
+        self.assertEqual(400, code)
+
+        code, headers, response = http_post('/patients', '"a"', {
+            'Content-Type': 'application/json'})
+        self.assertEqual(400, code)
+
         # No JSON parsing should occur if the content type isn't JSON.
         # At the moment, a 200 status is the only way to tell that parsing
         # didn't occur, even though an incorrect type should also give 400.

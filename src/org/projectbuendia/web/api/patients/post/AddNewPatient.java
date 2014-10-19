@@ -7,7 +7,7 @@ import org.projectbuendia.web.api.ApiInterface;
 import org.projectbuendia.web.api.SharedFunctions;
 
 import com.google.common.base.Joiner;
-import com.google.gson.JsonElement;
+import com.google.gson.JsonObject;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import java.io.IOException;
@@ -52,7 +52,7 @@ public class AddNewPatient implements ApiInterface {
                      final HttpServletResponse response,
                      final HashMap<String, String> urlVariables,
                      final Map<String, String[]> parameterMap,
-                     final JsonElement json,
+                     final JsonObject json,
                      final HashMap<String, String> payLoad) {
 
         final String[] responseText = new String[]{null};
