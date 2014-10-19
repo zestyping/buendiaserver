@@ -13,7 +13,7 @@ import org.projectbuendia.mongodb.MongoConnectionProcessor;
 import org.projectbuendia.mongodb.MongoQuery;
 import org.projectbuendia.sqlite.SQLiteConnectionProcessor;
 import org.projectbuendia.sqlite.SQLiteConnection;
-import org.projectbuendia.sqlite.SQLiteUpdate;
+import org.projectbuendia.sqlite.SqlDatabase;
 import org.projectbuendia.web.JettyServer;
 
 import java.io.*;
@@ -45,11 +45,15 @@ public final class Server {
         return systemProperties;
     }
     private static Calendar calendar = new GregorianCalendar();
-    private static SQLiteConnectionProcessor localDatabase;
-
+    private static SqlDatabase db = null;
+    public static SqlDatabase getSqlDatabase() {
+        return db;
+    }
+    private static SQLiteConnectionProcessor localDatabase = null;
     public static SQLiteConnectionProcessor getLocalDatabase() {
         return localDatabase;
     }
+
     private static MongoConnectionProcessor mongoDatabase;
     public static MongoConnectionProcessor getMongoDatabase() {
         return mongoDatabase;
@@ -93,33 +97,24 @@ public final class Server {
         START SQLITE
 
          */
-        localDatabase  = new SQLiteConnectionProcessor(new SQLiteConnection(Config.SQLITE_PATH));
-        localDatabase.start();
-
-        //Logging.writeSampleErrors(10);
         long start = System.currentTimeMillis();
-        System.out.println("Putting thread to sleep until sqlite is connected..");
-
-        while(!localDatabase.isConnected()) {
-            Thread.sleep(1);
-        }
-
+        SQLiteConnection sc = new SQLiteConnection(Config.SQLITE_PATH);
+        sc.connect();
+        db = null; //SqlDatabase.openSqliteFile(Config.SQLITE_PATH);
         long end = System.currentTimeMillis();
 
-        Logging.log("INFO", Config.SQLITE_PATH + " (sqlite) took "+(end - start)+" ms to connect");
+        Logging.log("INFO", Config.SQLITE_PATH + " (sqlite) took " +
+                    (end - start) + " ms to connect");
 
         // Split ddl.sql into statements and execute each one (executeUpdate
         // can only execute one statement at a time).
         String schema = "";
         try {
             schema = FileChecks.readFile("install/ddl.sql");
-        } catch (IOException e) {
-            e.printStackTrace();
+        } catch (IOException ignored) { }
+        for (String sql : schema.split(";\\s*\n")) {
+            db.update(sql);
         }
-        for (String statement : schema.split(";\\s*\n")) {
-            localDatabase.executeUpdate(new SQLiteUpdate(statement));
-        }
-
 
         /*
 

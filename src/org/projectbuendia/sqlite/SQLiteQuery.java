@@ -31,9 +31,9 @@ public abstract class SQLiteQuery implements SQLiteItem {
     }
 
 	@Override
-	public final boolean execute(SQLiteConnection connection) throws SQLException {
+	public final boolean execute(SqlDatabase database) throws SQLException {
 		long startTime = System.currentTimeMillis();
-		ResultSet result = connection.executeQuery(sql);
+		ResultSet result = database.query(sql);
 
 		if ((System.currentTimeMillis() - startTime) >= 2000) {
 			System.err.println("Query took: " + sql + ' ' + (System.currentTimeMillis() - startTime));

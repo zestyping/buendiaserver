@@ -20,16 +20,16 @@ public final class SQLiteConnectionProcessor implements Runnable {
         }
     }
 
-    private final SQLiteConnection connection;
+    private final SqlDatabase database;
     private final Thread thread;
     private boolean running;
     private final Queue<SQLiteItem> items = new ConcurrentLinkedQueue<SQLiteItem>();
     private final Object lock = new Object();
 
 
-    public SQLiteConnectionProcessor(SQLiteConnection connection) {
+    public SQLiteConnectionProcessor(SqlDatabase database) {
         this.thread = new Thread(this);
-        this.connection = connection;
+        this.database = database;
     }
 
 
@@ -47,37 +47,28 @@ public final class SQLiteConnectionProcessor implements Runnable {
         running = false;
     }
 
-    public boolean isConnected() {
-        return connection.isConnected();
-    }
-
     @Override
     public void run() {
 
         running = true;
         MainLoop:
         while (running) {
-            if (!connection.isConnected()) {
-                while (!connection.connect()) {
-                }
-            }
-
             while (!items.isEmpty()) {
-                //synchronized (lock) {
                 SQLiteItem item = items.peek();
                 if (!item.canExecute()) {
                     items.remove();
                     continue;
                 }
                 try {
-                    if (!item.execute(connection)) {
+                    if (!item.execute(database)) {
                         continue MainLoop;
                     }
                 } catch (SQLException e) {
-                    Logging.log("Lost con", e);
+                    Logging.log("SQL error", e);
+                } catch (SqlDatabaseException e) {
+                    Logging.log("SQL error", e);
                 }
                 items.remove();
-                //}
             }
             synchronized (this) {
                 try {
@@ -86,7 +77,7 @@ public final class SQLiteConnectionProcessor implements Runnable {
                 }
             }
         }
-        connection.close();
+        database.close();
     }
 
     public void waitForPendingPackets() {
@@ -100,13 +91,6 @@ public final class SQLiteConnectionProcessor implements Runnable {
     }
 
     public boolean executeStatement(SQLiteStatement statement) {
-
-        if (!connection.isConnected()) {
-            synchronized (this) {
-                this.notify();
-            }
-            return false;
-        }
         boolean result = items.offer(statement);
         synchronized (this) {
             this.notify();
@@ -115,13 +99,6 @@ public final class SQLiteConnectionProcessor implements Runnable {
     }
 
     public boolean executeQuery(SQLiteQuery query) {
-
-        if (!connection.isConnected()) {
-            synchronized (this) {
-                this.notify();
-            }
-            return false;
-        }
         boolean result = items.offer(query);
         synchronized (this) {
             this.notify();
@@ -138,16 +115,11 @@ public final class SQLiteConnectionProcessor implements Runnable {
     }
 
     public boolean forceUpdate(SQLiteUpdate update) {
-
         boolean result = items.offer(update);
-        if (!connection.isConnected()) {
-            return false;
-        }
-        return update.execute(connection);
+        return update.execute(database);
     }
 
     public boolean executeUpdate(SQLiteUpdate update) {
-
         boolean result = items.offer(update);
         synchronized (this) {
             this.notify();
@@ -156,12 +128,8 @@ public final class SQLiteConnectionProcessor implements Runnable {
     }
 
     public boolean blockingQuery(SQLiteQuery update) throws SQLException {
-
         synchronized (lock) {
-            if (!connection.isConnected()) {
-                return false;
-            }
-            return update.execute(connection);
+            return update.execute(database);
         }
     }
 }

@@ -7,5 +7,5 @@ import java.sql.SQLException;
  */
 public interface SQLiteItem {
 	boolean canExecute();
-	boolean execute(SQLiteConnection connection) throws SQLException;
+	boolean execute(SqlDatabase database) throws SQLException;
 }

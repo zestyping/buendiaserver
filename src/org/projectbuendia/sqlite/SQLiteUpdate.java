@@ -18,9 +18,9 @@ public final class SQLiteUpdate implements SQLiteItem {
     }
 
     @Override
-    public final boolean execute(SQLiteConnection connection) {
+    public final boolean execute(SqlDatabase database) {
         long startTime = System.currentTimeMillis();
-        int result = connection.executeUpdate(sql, params);
+        int result = database.update(sql, params);
         if ((System.currentTimeMillis() - startTime) >= 5000) {
             System.err.println("Update took: " + (System.currentTimeMillis() - startTime));
         }
