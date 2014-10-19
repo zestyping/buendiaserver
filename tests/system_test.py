@@ -172,7 +172,7 @@ class SystemTest(unittest.TestCase):
         self.assertEqual(1, len(self.get_json('/patients?given_name=%s' % (
             quote_name, ))))
 
-    def xtest_add_new_patient(self):
+    def test_add_new_patient(self):
         # TODO(ping): The POST API should take JSON, not form-encoded data.
         # self.post_json('/patients', {'id': 'test.1', 'given_name': 'Tom'})
         http_form_post('/patients', 'given_name=Tom&status=suspected')
@@ -213,7 +213,7 @@ class SystemTest(unittest.TestCase):
         self.assertEqual('Bob', patients[0]['given_name'])
         self.assertEqual('suspected', patients[0]['status'])
 
-    def xtest_post_content_type(self):
+    def test_post_content_type(self):
         # Bad JSON syntax should be caught for application/json content.
         code, headers, response = http_post('/patients', '{', {
             'Content-Type': 'application/json'})
