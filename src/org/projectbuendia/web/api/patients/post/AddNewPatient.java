@@ -1,8 +1,7 @@
 package org.projectbuendia.web.api.patients.post;
 
 import org.projectbuendia.server.Server;
-import org.projectbuendia.sqlite.SQLiteQuery;
-import org.projectbuendia.sqlite.SQLiteUpdate;
+import org.projectbuendia.sqlite.SqlDatabaseException;
 import org.projectbuendia.web.api.ApiInterface;
 import org.projectbuendia.web.api.SharedFunctions;
 
@@ -55,30 +54,6 @@ public class AddNewPatient implements ApiInterface {
                      final JsonObject json,
                      final HashMap<String, String> payLoad) {
 
-        final String[] responseText = new String[]{null};
-        final int[] lastId = new int[]{-1};
-
-        SQLiteQuery query = new SQLiteQuery("SELECT `id`, count(1) FROM `patients` ORDER BY ROWID DESC LIMIT 1") {
-
-            @Override
-            public void execute(ResultSet result) throws SQLException {
-                if(result == null) {
-
-                } else {
-                    while (result.next()) {
-                        if(result.getInt("count(1)") <= 0) {
-                            System.out.println("Empty result, inserting first");
-                            lastId[0] = 0;
-                            return;
-                        }
-                        System.out.println("ID IS:" + result.getString("id"));
-                        lastId[0] = Integer.parseInt(result.getString("id").split(Pattern.quote("."))[2]);
-                        System.out.println("got last id" + lastId[0]);
-                    }
-                }
-            }
-        };
-
         /* we can only execute this once at a time because we are generating the UID*/
 
         while(Server.isDoingPatient()) {
@@ -92,19 +67,30 @@ public class AddNewPatient implements ApiInterface {
 
         Server.setDoingPatient(true);
 
-        Server.getLocalDatabase().executeQuery(query);
 
-        while(lastId[0] == -1) {
-            try {
-               /// System.out.println("Waiting.....");
-                Thread.sleep(1);
-            } catch (InterruptedException e) {
-                e.printStackTrace();
+        int lastId = -1;
+
+        // try-with-resources ensures that every ResultSet is closed.  Closing
+        // ResultSets is very important; otherwise the database will be locked.
+        try (ResultSet result = Server.getSqlDatabase().query(
+            "SELECT id, count(1) FROM patients ORDER BY ROWID DESC LIMIT 1")) {
+            if (result.next()) {
+                if (result.getInt("count(1)") <= 0) {
+                    System.out.println("Empty result, inserting first");
+                    lastId = 0;
+                } else {
+                    System.out.println("ID IS:" + result.getString("id"));
+                    lastId = Integer.parseInt(result.getString("id").split(Pattern.quote("."))[2]);
+                    System.out.println("got last id" + lastId);
+                }
             }
-            // waiting for that query to clear considering the sensitive process
+        } catch (SQLException e) {
+            throw new SqlDatabaseException("Error getting results", e);
         }
 
-        int newId = lastId[0] + 1;
+
+        int newId = lastId + 1;
+        System.out.println("newId = " + newId);
 
         List<String> fields = new ArrayList();
         List<String> values = new ArrayList();
@@ -126,35 +112,24 @@ public class AddNewPatient implements ApiInterface {
         insertQuery += " (" + Joiner.on(", ").join(fields) + ")";
         insertQuery += " values (" + Joiner.on(", ").join(values) + ")";
 
-        Server.getLocalDatabase().executeUpdate(
-            new SQLiteUpdate(insertQuery, args.toArray()));
+        Server.getSqlDatabase().update(insertQuery, args.toArray());
 
         Server.setDoingPatient(false);
 
-        SQLiteQuery checkQuery = new SQLiteQuery("SELECT * FROM `patients` WHERE `id` = 'MSF.TS."+newId+"'  ") {
 
-            @Override
-            public void execute(ResultSet result) throws SQLException {
-                while (result.next()) {
-                    responseText[0] = SharedFunctions.SpecificPatientResponse(result);
-                }
+        String responseText = "";
+        try (ResultSet result = Server.getSqlDatabase().query(
+            "SELECT * FROM patients WHERE id = ?", "MSF.TS." + newId)) {
+            if (result.next()) {
+                responseText = SharedFunctions.SpecificPatientResponse(result);
             }
-        };
-
-        Server.getLocalDatabase().executeQuery(checkQuery);
-
-        while(responseText[0] == null) {
-            // wait until the response is given
-            try {
-                Thread.sleep(1);
-            } catch (InterruptedException e) {
-                e.printStackTrace();
-            }
+        } catch (SQLException e) {
+            throw new SqlDatabaseException("Error getting results", e);
         }
 
         response.setStatus(HttpServletResponse.SC_OK);
         try {
-            response.getWriter().write(responseText[0]);
+            response.getWriter().write(responseText);
         } catch (IOException e) {
             e.printStackTrace();
         }

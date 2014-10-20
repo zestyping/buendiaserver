@@ -2,7 +2,7 @@ package org.projectbuendia.web.api.patients.get;
 
 import org.projectbuendia.models.Patient;
 import org.projectbuendia.server.Server;
-import org.projectbuendia.sqlite.SQLiteStatement;
+import org.projectbuendia.sqlite.SqlDatabaseException;
 import org.projectbuendia.web.api.ApiInterface;
 import org.projectbuendia.web.api.SharedFunctions;
 
@@ -78,54 +78,38 @@ public class FilterPatients implements ApiInterface {
         }
 
         // Construct the SQL query.
-        String query = "select * from patients";
+        String sql = "select * from patients";
         if (!conditions.isEmpty()) {
-            query += " where " + Joiner.on(" " + op + " ").join(conditions);
+            sql += " where " + Joiner.on(" " + op + " ").join(conditions);
         }
         String[] limitParams = parameterMap.get("limit");
         if (limitParams != null) {
-            query += " limit ?";
+            sql += " limit ?";
             args.add(limitParams[0]);
         }
         String[] offsetParams = parameterMap.get("offset");
         if (offsetParams != null) {
-            query += " offset ?";
+            sql += " offset ?";
             args.add(offsetParams[0]);
         }
-        System.out.println("query: " + query);
+        System.out.println("query: " + sql);
         System.out.println("with args: " + Joiner.on(", ").join(args));
 
         // Execute the query and collect all the results into a list.
-        final boolean[] finished = {false};
-        final List patients = new ArrayList();
-        Server.getLocalDatabase().executeStatement(
-            new SQLiteStatement(query, args.toArray()) {
-            @Override
-            public void execute(ResultSet result) throws SQLException {
-                while (result.next()) {
-                    patients.add(Patient.fromResultSet(result));
-                }
-                finished[0] = true;
+        final List<Patient> patients = new ArrayList<Patient>();
+        try (ResultSet result = Server.getSqlDatabase().query(
+            sql, args.toArray())) {
+            while (result.next()) {
+                patients.add(Patient.fromResultSet(result));
             }
-        });
-
-        // Wait until the query is done.
-        // TODO(ping): If an exception occurs while processing the query,
-        // execute() is never called and the server hangs forever.  We should
-        // issue the query directly to SQLite instead of sending it to the
-        // connection processor and spin-waiting here.
-        while (!finished[0]) {
-            try {
-                Thread.sleep(1);
-            } catch (InterruptedException e) {
-                e.printStackTrace();
-            }
+        } catch (SQLException e) {
+            throw new SqlDatabaseException("Error getting results", e);
         }
 
         // Write out all the results as a JSON array.
         response.setStatus(HttpServletResponse.SC_OK);
         try {
-            response.getWriter().write((new Gson()).toJson(patients));
+            response.getWriter().write(new Gson().toJson(patients));
         } catch (IOException e) {
             e.printStackTrace();
         }

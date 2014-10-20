@@ -45,11 +45,7 @@ public final class SqlDatabase {
     public ResultSet query(String sql) {
         try {
             Statement statement = connection.createStatement();
-            try {
-                return statement.executeQuery(sql);
-            } finally {
-                statement.close();
-            }
+            return statement.executeQuery(sql);
         } catch (SQLException e) {
             throw new SqlDatabaseException("Error executing SQL: " + sql, e);
         }
@@ -58,16 +54,12 @@ public final class SqlDatabase {
     public ResultSet query(String sql, Object... params) {
         try {
             PreparedStatement statement = connection.prepareStatement(sql);
-            try {
-                int i = 0;
-                for (Object param : params) {
-                    i++;
-                    statement.setObject(i, param);
-                }
-                return statement.executeQuery();
-            } finally {
-                statement.close();
+            int i = 0;
+            for (Object param : params) {
+                i++;
+                statement.setObject(i, param);
             }
+            return statement.executeQuery();
         } catch (SQLException e) {
             throw new SqlDatabaseException("Error executing SQL: " + sql, e);
         }

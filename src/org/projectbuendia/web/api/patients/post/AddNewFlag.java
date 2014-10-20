@@ -1,7 +1,6 @@
 package org.projectbuendia.web.api.patients.post;
 
 import org.projectbuendia.server.Server;
-import org.projectbuendia.sqlite.SQLiteUpdate;
 import org.projectbuendia.web.api.ApiInterface;
 
 import com.google.gson.JsonObject;
@@ -18,12 +17,12 @@ public class AddNewFlag implements ApiInterface {
     @Override
     public void call(final HttpServletRequest request, final HttpServletResponse response,final HashMap<String, String> urlVariables, final Map<String, String[]> parameterMap, final JsonObject json, final HashMap<String, String> payLoad){
 
-        Server.getLocalDatabase().executeUpdate(new SQLiteUpdate("" +
+        Server.getSqlDatabase().update(
                 "INSERT INTO `patients`" +
                 "()" +
                 "VALUES" +
                 "()"
-        ));
+        );
         String responseText = "{";
 
         responseText = responseText + "}";

@@ -1,7 +1,7 @@
 package org.projectbuendia.web.api.flags.get;
 
 import org.projectbuendia.server.Server;
-import org.projectbuendia.sqlite.SQLiteQuery;
+import org.projectbuendia.sqlite.SqlDatabaseException;
 import org.projectbuendia.web.api.ApiInterface;
 import org.projectbuendia.web.api.SharedFunctions;
 
@@ -56,36 +56,22 @@ public class FilterFlags implements ApiInterface {
         ;
 
         System.out.println(queryString);
-        SQLiteQuery checkQuery = new SQLiteQuery(queryString) {
-
-            @Override
-            public void execute(ResultSet result) throws SQLException {
-                StringBuilder s = new StringBuilder();
-                while (result.next()) {
-                    if(result.isFirst()) {
-                        s.append(SharedFunctions.SpecificFlagResponse(result));
-                    } else {
-                        s.append("," + SharedFunctions.SpecificFlagResponse(result));
-                    }
+        StringBuilder s = new StringBuilder();
+        try (ResultSet result = Server.getSqlDatabase().query(queryString)) {
+            while (result.next()) {
+                if (result.isFirst()) {
+                    s.append(SharedFunctions.SpecificFlagResponse(result));
+                } else {
+                    s.append("," + SharedFunctions.SpecificFlagResponse(result));
                 }
-                responseText[0] = s.toString();
             }
-        };
-
-        Server.getLocalDatabase().executeQuery(checkQuery);
-
-        while(responseText[0] == null) {
-            // wait until the response is given
-            try {
-                Thread.sleep(1);
-            } catch (InterruptedException e) {
-                e.printStackTrace();
-            }
+        } catch (SQLException e) {
+            throw new SqlDatabaseException("Error getting results", e);
         }
 
         response.setStatus(HttpServletResponse.SC_OK);
         try {
-            response.getWriter().write("[" + responseText[0] + "]");
+            response.getWriter().write("[" + s.toString() + "]");
         } catch (IOException e) {
             e.printStackTrace();
         }

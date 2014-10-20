@@ -1,8 +1,7 @@
 package org.projectbuendia.web.api.patients.put;
 
 import org.projectbuendia.server.Server;
-import org.projectbuendia.sqlite.SQLiteStatement;
-import org.projectbuendia.sqlite.SQLiteUpdate;
+import org.projectbuendia.sqlite.SqlDatabaseException;
 import org.projectbuendia.utils.InvalidInputException;
 import org.projectbuendia.utils.JsonUtils;
 import org.projectbuendia.web.api.ApiInterface;
@@ -57,8 +56,6 @@ public class UpdateSpecificPatient implements ApiInterface {
                      final JsonObject json,
                      final HashMap<String, String> payLoad) {
 
-        final String[] responseText = new String[]{null};
-
         List<String> updates = new ArrayList<String>();
         List<Object> args = new ArrayList<Object>();
 
@@ -83,37 +80,26 @@ public class UpdateSpecificPatient implements ApiInterface {
 
         args.add(urlVariables.get("id"));
 
-        Server.getLocalDatabase().executeUpdate(
-            new SQLiteUpdate(updateQuery, args.toArray()));
+        Server.getSqlDatabase().update(updateQuery, args.toArray());
 
         // Retrieve stored values
         List<String> args2 = new ArrayList();
         String checkQuery = "SELECT * FROM `patients` WHERE `id` = ?";
         args2.add(urlVariables.get("id"));
 
-        Server.getLocalDatabase().executeStatement(
-            new SQLiteStatement(checkQuery, args2.toArray()) {
-                @Override
-                public void execute(ResultSet result) throws SQLException {
-                    while (result.next()) {
-                        responseText[0] = SharedFunctions.SpecificPatientResponse(result);
-                    }
-                }
+        String responseText = "";
+        try (ResultSet result = Server.getSqlDatabase().query(
+            checkQuery, args2.toArray())) {
+            if (result.next()) {
+                responseText = SharedFunctions.SpecificPatientResponse(result);
             }
-        );
-
-        while(responseText[0] == null) {
-            // wait until the response is given
-            try {
-                Thread.sleep(1);
-            } catch (InterruptedException e) {
-                e.printStackTrace();
-            }
+        } catch (SQLException e) {
+            throw new SqlDatabaseException("Error getting results", e);
         }
 
         response.setStatus(HttpServletResponse.SC_OK);
         try {
-            response.getWriter().write(responseText[0]);
+            response.getWriter().write(responseText);
         } catch (IOException e) {
             e.printStackTrace();
         }

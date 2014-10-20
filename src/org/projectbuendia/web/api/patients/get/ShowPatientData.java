@@ -2,7 +2,7 @@ package org.projectbuendia.web.api.patients.get;
 
 import org.projectbuendia.models.Patient;
 import org.projectbuendia.server.Server;
-import org.projectbuendia.sqlite.SQLiteQuery;
+import org.projectbuendia.sqlite.SqlDatabaseException;
 import org.projectbuendia.web.api.ApiInterface;
 
 import com.google.gson.Gson;
@@ -22,31 +22,19 @@ public class ShowPatientData implements ApiInterface {
     @Override
     public void call(final HttpServletRequest request, final HttpServletResponse response,final HashMap<String, String> urlVariables, final Map<String, String[]> parameterMap, final JsonObject json, final HashMap<String, String> payLoad){
 
-        final Patient[] patient = {null};
-        SQLiteQuery checkQuery = new SQLiteQuery("SELECT * FROM `patients` WHERE `id` = '"+urlVariables.get("id")+"'  ") {
-
-            @Override
-            public void execute(ResultSet result) throws SQLException {
-                while (result.next()) {
-                    patient[0] = Patient.fromResultSet(result);
-                }
+        Patient patient = null;
+        try (ResultSet result = Server.getSqlDatabase().query(
+            "SELECT * FROM patients WHERE id = ?", urlVariables.get("id"))) {
+            if (result.next()) {
+                patient = Patient.fromResultSet(result);
             }
-        };
-
-        Server.getLocalDatabase().executeQuery(checkQuery);
-
-        while (patient[0] == null) {
-            // wait until the response is given
-            try {
-                Thread.sleep(1);
-            } catch (InterruptedException e) {
-                e.printStackTrace();
-            }
+        } catch (SQLException e) {
+            throw new SqlDatabaseException("Error getting results", e);
         }
 
         response.setStatus(HttpServletResponse.SC_OK);
         try {
-            response.getWriter().write((new Gson()).toJson(patient[0]));
+            response.getWriter().write(new Gson().toJson(patient));
         } catch (IOException e) {
             e.printStackTrace();
         }

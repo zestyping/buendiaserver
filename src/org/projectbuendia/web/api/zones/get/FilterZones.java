@@ -1,7 +1,7 @@
 package org.projectbuendia.web.api.zones.get;
 
 import org.projectbuendia.server.Server;
-import org.projectbuendia.sqlite.SQLiteQuery;
+import org.projectbuendia.sqlite.SqlDatabaseException;
 import org.projectbuendia.web.api.ApiInterface;
 import org.projectbuendia.web.api.SharedFunctions;
 
@@ -21,39 +21,23 @@ public class FilterZones implements ApiInterface {
     @Override
     public void call(final HttpServletRequest request, final HttpServletResponse response,final HashMap<String, String> urlVariables, final Map<String, String[]> parameterMap, final JsonObject json, final HashMap<String, String> payLoad){
 
-        final String[] responseText = new String[]{null};
-
-
-        SQLiteQuery checkQuery = new SQLiteQuery("SELECT * FROM `zones`") {
-
-            @Override
-            public void execute(ResultSet result) throws SQLException {
-                StringBuilder s = new StringBuilder();
-                while (result.next()) {
-                    if(result.isFirst()) {
-                        s.append(SharedFunctions.SpecificPatientResponse(result));
-                    } else {
-                        s.append("," + SharedFunctions.SpecificPatientResponse(result));
-                    }
+        StringBuilder s = new StringBuilder();
+        try (ResultSet result = Server.getSqlDatabase().query(
+            "SELECT * FROM zones")) {
+            while (result.next()) {
+                if (result.isFirst()) {
+                    s.append(SharedFunctions.SpecificPatientResponse(result));
+                } else {
+                    s.append("," + SharedFunctions.SpecificPatientResponse(result));
                 }
-                responseText[0] = s.toString();
             }
-        };
-
-        Server.getLocalDatabase().executeQuery(checkQuery);
-
-        while(responseText[0] == null) {
-            // wait until the response is given
-            try {
-                Thread.sleep(1);
-            } catch (InterruptedException e) {
-                e.printStackTrace();
-            }
+        } catch (SQLException e) {
+            throw new SqlDatabaseException("Error getting results", e);
         }
 
         response.setStatus(HttpServletResponse.SC_OK);
         try {
-            response.getWriter().write("[" + responseText[0] + "]");
+            response.getWriter().write("[" + s.toString() + "]");
         } catch (IOException e) {
             e.printStackTrace();
         }
