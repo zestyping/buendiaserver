@@ -32,7 +32,5 @@ fi
 # The server needs config.prop, install/ddl.sql, and errors/ to exist.
 mkdir -p $OUTDIR/errors $OUTDIR/install
 for file in config.prop install/ddl.sql; do
-  if [ ! -f $OUTDIR/$file ]; then
-    cp -pr $ROOT/$file $OUTDIR/$file
-  fi
+  cp -pr $ROOT/$file $OUTDIR/$file
 done

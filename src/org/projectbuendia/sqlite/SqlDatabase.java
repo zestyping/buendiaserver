@@ -2,12 +2,16 @@ package org.projectbuendia.sqlite;
 
 import org.projectbuendia.fileops.Logging;
 
-import java.sql.*;
+import java.sql.Connection;
+import java.sql.DriverManager;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+import java.sql.Statement;
 
 /**
  * Provides query and update access to a SQL database.  All SQLExceptions
  * are treated as unrecoverable and converted to unchecked exceptions.
- * @author Pim de Witte
  */
 public final class SqlDatabase {
     private final String url;
