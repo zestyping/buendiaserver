@@ -5,7 +5,5 @@ package org.projectbuendia.config;
  */
 public class DatabaseConfigs {
     public static void getDatabaseConfigs() {
-        // get zones
-        // get flags
     }
 }

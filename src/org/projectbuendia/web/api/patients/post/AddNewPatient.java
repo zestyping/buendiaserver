@@ -34,21 +34,11 @@ public class AddNewPatient implements ApiInterface {
         "status",
         "given_name",
         "family_name",
-        "assigned_location_zone_id",
-        "assigned_location_tent_id",
-        "assigned_location_bed",
         "age_years",
-        "age_months",
-        "age_certainty",
-        "age_type",
         "gender",
-        "important_information",
-        "pregnancy_start_timestamp",
-        "first_showed_symptoms_timestamp",
-        "movement",
-        "eating",
-        "origin_location",
-        "next_of_kin"
+        "assigned_location_zone",
+        "assigned_location_tent",
+        "assigned_location_bed"
     ));
 
     @Override

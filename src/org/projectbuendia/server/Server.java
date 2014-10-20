@@ -4,7 +4,6 @@ import com.mongodb.*;
 import org.projectbuendia.config.Config;
 import org.projectbuendia.config.DatabaseConfigs;
 import org.projectbuendia.config.ServerProperties;
-import org.projectbuendia.config.zones.Zone;
 import org.projectbuendia.fileops.FileChecks;
 import org.projectbuendia.fileops.Logging;
 import org.projectbuendia.logic.BackupThread;
@@ -37,8 +36,6 @@ public final class Server {
     public static void setDoingPatient(boolean value) {
         doingPatient = value;
     }
-
-    public static HashMap<Integer, Zone> zones = new HashMap<Integer, Zone>();
 
     private static ServerProperties systemProperties;
     public static ServerProperties getServerProperties() {
@@ -154,7 +151,7 @@ public final class Server {
 
         }
 
-        /* We load the all the database configs such as zones, tents, portals, flag_types, flag_subtypes*/
+        /* We load the all the database configs */
 
         DatabaseConfigs.getDatabaseConfigs();
 

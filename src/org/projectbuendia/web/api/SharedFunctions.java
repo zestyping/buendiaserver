@@ -45,17 +45,6 @@ public class SharedFunctions {
                 "\"next_of_kin\":" + (result.getString("next_of_kin") != null ? "\""+result.getString("next_of_kin")+"\"" :  "null") +""+
                 "}";
     }
-    public static String SpecificFlagResponse(ResultSet result) throws SQLException {
-        SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd");
-        return "{" +
-                "\"id\":" + result.getRow() +","+
-                "\"created_timestamp_utc\":" + result.getLong("created_timestamp")+","+
-                "}";
-    }
-
-    public static String SpecificZoneResponse(ResultSet result) throws SQLException {
-        return "";
-    }
     public static String getBody(HttpServletRequest request) throws IOException {
 
         String body = null;

@@ -7,10 +7,8 @@ import org.projectbuendia.config.Config;
 import org.eclipse.jetty.server.Server;
 import org.eclipse.jetty.servlet.ServletHandler;
 import org.projectbuendia.web.api.ApiInterface;
-import org.projectbuendia.web.api.Flags;
 import org.projectbuendia.web.api.ServletFilter;
 import org.projectbuendia.web.api.Patients;
-import org.projectbuendia.web.api.flags.get.FilterFlags;
 import org.projectbuendia.web.api.patients.get.FilterPatients;
 import org.projectbuendia.web.api.patients.get.ShowPatientData;
 import org.projectbuendia.web.api.patients.post.AddNewPatient;
@@ -35,21 +33,10 @@ public class JettyServer {
         handler.addServletWithMapping(Patients.class, "/patients/*");
         handler.addServletWithMapping(Patients.class, "/patients");
 
-        handler.addServletWithMapping(Flags.class, "/flags/*");
-        handler.addServletWithMapping(Flags.class, "/flags");
-
-
-
         getStructure.put("/patients", new FilterPatients());
         getStructure.put("/patients/*", new ShowPatientData());
-
-        getStructure.put("/flags", new FilterFlags());
-
         postStructure.put("/patients", new AddNewPatient());
-
         putStructure.put("/patients/*", new UpdateSpecificPatient());
-
-
 
         server.start();
         server.join();
