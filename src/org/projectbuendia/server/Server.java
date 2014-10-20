@@ -98,9 +98,7 @@ public final class Server {
 
          */
         long start = System.currentTimeMillis();
-        SQLiteConnection sc = new SQLiteConnection(Config.SQLITE_PATH);
-        sc.connect();
-        db = null; //SqlDatabase.openSqliteFile(Config.SQLITE_PATH);
+        db = SqlDatabase.openSqliteFile(Config.SQLITE_PATH);
         long end = System.currentTimeMillis();
 
         Logging.log("INFO", Config.SQLITE_PATH + " (sqlite) took " +

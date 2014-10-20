@@ -18,11 +18,16 @@ public final class SqlDatabase {
         try {
             connection = DriverManager.getConnection(url);
         } catch (SQLException e) {
-            throw new SqlDatabaseException("SQL connection error", e);
+            throw new SqlDatabaseException("Could not connect", e);
         }
     }
 
     public static SqlDatabase openSqliteFile(String filename) {
+        try {
+            Class.forName("org.sqlite.JDBC");
+        } catch (ClassNotFoundException e) {
+            throw new AssertionError(e);
+        }
         return new SqlDatabase("jdbc:sqlite:" + filename);
     }
 
@@ -31,7 +36,7 @@ public final class SqlDatabase {
             try {
                 connection.close();
             } catch (SQLException e) {
-                throw new SqlDatabaseException("SQL close() error", e);
+                throw new SqlDatabaseException("Could not close", e);
             }
         }
         connection = null;
@@ -46,7 +51,7 @@ public final class SqlDatabase {
                 statement.close();
             }
         } catch (SQLException e) {
-            throw new SqlDatabaseException("SQL query error", e);
+            throw new SqlDatabaseException("Error executing SQL: " + sql, e);
         }
     }
 
@@ -64,7 +69,7 @@ public final class SqlDatabase {
                 statement.close();
             }
         } catch (SQLException e) {
-            throw new SqlDatabaseException("SQL query error", e);
+            throw new SqlDatabaseException("Error executing SQL: " + sql, e);
         }
     }
 
@@ -77,7 +82,7 @@ public final class SqlDatabase {
                 statement.close();
             }
         } catch (SQLException e) {
-            throw new SqlDatabaseException("SQL update error", e);
+            throw new SqlDatabaseException("Error executing SQL: " + sql, e);
         }
     }
 
@@ -95,7 +100,7 @@ public final class SqlDatabase {
                 statement.close();
             }
         } catch (SQLException e) {
-            throw new SqlDatabaseException("SQL update error", e);
+            throw new SqlDatabaseException("Error executing SQL: " + sql, e);
         }
     }
 }
