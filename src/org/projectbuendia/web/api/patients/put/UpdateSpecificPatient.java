@@ -1,12 +1,13 @@
 package org.projectbuendia.web.api.patients.put;
 
+import org.projectbuendia.models.Patient;
 import org.projectbuendia.server.Server;
 import org.projectbuendia.sqlite.SqlDatabaseException;
 import org.projectbuendia.utils.InvalidInputException;
 import org.projectbuendia.utils.JsonUtils;
 import org.projectbuendia.web.api.ApiInterface;
-import org.projectbuendia.web.api.SharedFunctions;
 
+import com.google.gson.Gson;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.common.base.Joiner;
@@ -87,11 +88,11 @@ public class UpdateSpecificPatient implements ApiInterface {
         String checkQuery = "SELECT * FROM `patients` WHERE `id` = ?";
         args2.add(urlVariables.get("id"));
 
-        String responseText = "";
+        Patient patient = null;
         try (ResultSet result = Server.getSqlDatabase().query(
             checkQuery, args2.toArray())) {
             if (result.next()) {
-                responseText = SharedFunctions.SpecificPatientResponse(result);
+                patient = Patient.fromResultSet(result);
             }
         } catch (SQLException e) {
             throw new SqlDatabaseException("Error getting results", e);
@@ -99,7 +100,7 @@ public class UpdateSpecificPatient implements ApiInterface {
 
         response.setStatus(HttpServletResponse.SC_OK);
         try {
-            response.getWriter().write(responseText);
+            response.getWriter().write(new Gson().toJson(patient));
         } catch (IOException e) {
             e.printStackTrace();
         }
