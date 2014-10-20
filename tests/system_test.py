@@ -5,7 +5,6 @@ import json
 import sqlite3
 import unittest
 import urllib2
-from urllib import quote
 
 SQLITE_FILE = 'msf.db'
 SERVER_ROOT = 'http://localhost:8080'
@@ -80,14 +79,17 @@ class SystemTest(unittest.TestCase):
         """Issues a POST request containing the given data encoded in JSON."""
         status_code, headers, content = http_json_post(path, json.dumps(data))
         self.assertEqual(200, status_code)
+        return json.loads(content)
 
     def put_json(self, path, data):
         """Issues a PUT request containing the given data encoded in JSON."""
         status_code, headers, content = http_json_put(path, json.dumps(data))
         self.assertEqual(200, status_code)
+        return json.loads(content)
 
     def test_json_serialization(self):
-        http_post('/patients', 'given_name={"}&status=suspected')
+        self.post_json(
+            '/patients', {'given_name': '{"}', 'status': 'suspected'})
 
         # Verify that special characters in data don't cause JSON syntax errors.
         patients = self.get_json('/patients')
@@ -96,21 +98,20 @@ class SystemTest(unittest.TestCase):
 
     def test_unicode(self):
         """Test support for unicode in the Patient API."""
+        name = u'T\u00F8m'
+        param = urllib2.quote(name.encode('utf-8'))  # URL-encoded
+
         # Add one patient; confirm it appears in the list of all patients.
-        unicode_name = quote(u"T\u00F8m".encode("utf8"))
-        http_post('/patients', "given_name=%s&status=suspected" % (
-            unicode_name,))
+        self.post_json('/patients', {'given_name': name, 'status': 'suspected'})
         patients = self.get_json('/patients')
         self.assertEqual(1, len(patients))
         # Test if the name stayed the same
-        self.assertEqual(u"T\u00F8m", patients[0]['given_name'])
+        self.assertEqual(name, patients[0]['given_name'])
 
         # Test if patients can be retrieved by unicode characters.
-        self.assertEqual(1, len(self.get_json('/patients?given_name=%s' % (
-            unicode_name,))))
+        self.assertEqual(1, len(self.get_json('/patients?given_name=' + param)))
         # Test if patients can be searched by unicode characters
-        self.assertEqual(1, len(self.get_json('/patients?search=%s' % (
-            unicode_name,))))
+        self.assertEqual(1, len(self.get_json('/patients?search=' + param)))
 
     def test_list_patients(self):
         """Testing retrieval of patients."""
@@ -118,7 +119,8 @@ class SystemTest(unittest.TestCase):
         self.assertEqual([], self.get_json('/patients'))
 
         # Add one patient; confirm it appears in the list of all patients.
-        http_post('/patients', 'given_name=Tom&status=suspected')
+        self.post_json(
+            '/patients', {'given_name': 'Tom', 'status': 'suspected'})
         self.assertEqual(1, len(self.get_json('/patients')))
 
         # Test matching on single fields.
@@ -127,10 +129,11 @@ class SystemTest(unittest.TestCase):
         self.assertEqual(0, len(self.get_json('/patients?given_name=Bob')))
         self.assertEqual(1, len(self.get_json('/patients?given_name=Tom')))
 
-        # TODO: Test matching on fields is case-insensitive.
+        # TODO: Add an API feature to do a case-insensitive match on names.
 
         # Test matching on multiple fields.
-        http_post('/patients', 'given_name=Frank&status=discharged')
+        self.post_json(
+            '/patients', {'given_name': 'Frank', 'status': 'discharged'})
         self.assertEqual(0, len(self.get_json(
             '/patients?given_name=Tom&status=foo')))
         self.assertEqual(0, len(self.get_json(
@@ -153,29 +156,30 @@ class SystemTest(unittest.TestCase):
 
     def test_escaping_input(self):
         """Testing all incoming variables are properly escaped."""
-        quote_name = quote('T\'om')
+        name = 'T\'o"m'
+
         # Add one patient that contains quotes.
-        http_form_post('/patients', 'given_name=%s&status=suspected' % (
-            quote_name,))
+        self.post_json('/patients', {'given_name': name, 'status': 'suspected'})
+
         # Test the patient is stored and can be retrieved.
         patients = self.get_json('/patients')
         self.assertEqual(1, len(patients))
 
         # Test the name of the patient is still the same.
-        self.assertEqual('T\'om', patients[0]['given_name'])
+        self.assertEqual(name, patients[0]['given_name'])
 
-        # Test search is properly escaping the incoming variables
-        self.assertEqual(1, len(self.get_json('/patients?search=%s' % (
-            quote_name, ))))
+        # Test search is properly escaping the incoming variables.
+        self.assertEqual(1, len(self.get_json(
+            '/patients?search=' + urllib2.quote(name))))
 
         # Test field match is properly escaping the incoming variables.
-        self.assertEqual(1, len(self.get_json('/patients?given_name=%s' % (
-            quote_name, ))))
+        self.assertEqual(1, len(self.get_json(
+            '/patients?given_name=' + urllib2.quote(name))))
 
     def test_add_new_patient(self):
         # TODO(ping): The POST API should take JSON, not form-encoded data.
-        # self.post_json('/patients', {'id': 'test.1', 'given_name': 'Tom'})
-        http_form_post('/patients', 'given_name=Tom&status=suspected')
+        self.post_json(
+            '/patients', {'given_name': 'Tom', 'status': 'suspected'})
 
         # Verify that the new patient appears in the list of all patients.
         patients = self.get_json('/patients')
@@ -185,13 +189,11 @@ class SystemTest(unittest.TestCase):
     def test_edit_patient(self):
         """Test editing patients with PUT."""
         # Create patient that will be edited.
-        code, headers, response = http_form_post('/patients',
-                'given_name=Tom&status=suspected')
-        patient1_id = json.loads(response)['id']
+        patient1_id = self.post_json(
+            '/patients', {'given_name': 'Tom', 'status': 'suspected'})['id']
         # Create patient that will be used as control.
-        code, headers, response = http_form_post('/patients',
-                'given_name=Bob&status=suspected')
-        patient2_id = json.loads(response)['id']
+        patient2_id = self.post_json(
+            '/patients', {'given_name': 'Bob', 'status': 'suspected'})['id']
 
         # Check if patient Tom's name can be updated
         self.put_json('/patients/' + patient1_id, {'given_name': 'John'})

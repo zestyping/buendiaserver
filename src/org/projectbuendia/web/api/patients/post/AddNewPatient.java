@@ -1,11 +1,16 @@
 package org.projectbuendia.web.api.patients.post;
 
+import org.projectbuendia.models.Patient;
 import org.projectbuendia.server.Server;
 import org.projectbuendia.sqlite.SqlDatabaseException;
+import org.projectbuendia.utils.InvalidInputException;
+import org.projectbuendia.utils.JsonUtils;
 import org.projectbuendia.web.api.ApiInterface;
 import org.projectbuendia.web.api.SharedFunctions;
 
 import com.google.common.base.Joiner;
+import com.google.gson.Gson;
+import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
@@ -89,39 +94,46 @@ public class AddNewPatient implements ApiInterface {
         }
 
 
-        int newId = lastId + 1;
+        String newId = "MSF.TS." + (lastId + 1);
         System.out.println("newId = " + newId);
 
         List<String> fields = new ArrayList();
         List<String> values = new ArrayList();
-        List<String> args = new ArrayList();
+        List<Object> args = new ArrayList();
 
-        fields.add("`id`");
+        fields.add("id");
         values.add("?");
-        args.add("MSF.TS."+ newId);
+        args.add(newId);
 
-        for(String s : payLoad.keySet()) {
-            if (INSERTABLE_COLUMNS.contains(s)) {
-                fields.add("`"+s+"`");
+        for (Map.Entry<String, JsonElement> entry: json.entrySet()) {
+            String key = entry.getKey();
+            Object value;
+            try {
+                value = JsonUtils.toStringOrLongOrNull(entry.getValue());
+            } catch (InvalidInputException e) {
+                // TODO(kpy): Let this exception return an HTTP 400.
+                continue;
+            }
+            if (INSERTABLE_COLUMNS.contains(key)) {
+                fields.add(key);
                 values.add("?");
-                args.add(payLoad.get(s));
+                args.add(value);
             }
         }
 
-        String insertQuery = "insert into `patients`";
-        insertQuery += " (" + Joiner.on(", ").join(fields) + ")";
-        insertQuery += " values (" + Joiner.on(", ").join(values) + ")";
+        String sql = "insert into patients " +
+            "(" + Joiner.on(", ").join(fields) + ") " +
+            "values (" + Joiner.on(", ").join(values) + ")";
 
-        Server.getSqlDatabase().update(insertQuery, args.toArray());
+        Server.getSqlDatabase().update(sql, args.toArray());
 
         Server.setDoingPatient(false);
 
-
-        String responseText = "";
+        Patient patient = null;
         try (ResultSet result = Server.getSqlDatabase().query(
-            "SELECT * FROM patients WHERE id = ?", "MSF.TS." + newId)) {
+            "SELECT * FROM patients WHERE id = ?", newId)) {
             if (result.next()) {
-                responseText = SharedFunctions.SpecificPatientResponse(result);
+                patient = Patient.fromResultSet(result);
             }
         } catch (SQLException e) {
             throw new SqlDatabaseException("Error getting results", e);
@@ -129,7 +141,7 @@ public class AddNewPatient implements ApiInterface {
 
         response.setStatus(HttpServletResponse.SC_OK);
         try {
-            response.getWriter().write(responseText);
+            response.getWriter().write(new Gson().toJson(patient));
         } catch (IOException e) {
             e.printStackTrace();
         }

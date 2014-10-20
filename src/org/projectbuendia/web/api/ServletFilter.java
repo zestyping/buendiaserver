@@ -32,7 +32,10 @@ public class ServletFilter implements Filter {
         response.addHeader("Access-Control-Allow-Methods", "POST, GET, OPTIONS, PUT, DELETE, HEAD");
         //response.addHeader("Access-Control-Allow-Headers", "X-PINGOTHER, Origin, X-Requested-With, Content-Type, Accept");
         response.addHeader("Access-Control-Max-Age", "1728000");
-       response.setContentType("application/json");
+
+        // Specifying utf-8 here is important, as it sets the character
+        // encoding used by response.getWriter().
+        response.setContentType("application/json; charset=UTF-8");
     }
 
     @Override
